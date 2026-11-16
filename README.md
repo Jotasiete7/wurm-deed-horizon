@@ -8,7 +8,7 @@ Offline-first **upkeep tracker and deposit planner** for **Wurm Online** settlem
 
 ## Quick Start
 
-1. Download the repository (`Code → Download ZIP`) or `git clone` it locally.
+1. **[Download the latest version (ZIP)](https://github.com/Jotasiete7/wurm-deed-horizon/archive/refs/heads/main.zip)** and extract it anywhere (or `git clone` the repo).
 2. Double-click `Abrir-Deed-Tracker.bat` (Windows) or open `Deed-Horizon.html` directly in any modern browser.
 3. In **Wurm Online**, open your settlement's **Settlement Billboard**:
    - Take a screenshot snip (`Win + Shift + S`) and press **`Ctrl + V`** anywhere on the page (client-side OCR via Tesseract.js), **or**
@@ -36,5 +36,6 @@ Want to test the interface before adding your own deeds? Click **"Load sample da
 ## Arquivos / Português
 
 Este projeto roda **100% localmente** no navegador (`Deed-Horizon.html` ou `Abrir-Deed-Tracker.bat`), sem servidor externo:
+- **[Baixar versão mais recente (ZIP)](https://github.com/Jotasiete7/wurm-deed-horizon/archive/refs/heads/main.zip)**, extrair e abrir `Abrir-Deed-Tracker.bat` ou `Deed-Horizon.html`.
 - Cole prints (`Ctrl+V`) ou texto do *Settlement Billboard* para cadastrar e atualizar suas deeds.
 - Use o menu **`⋯`** para alterar o idioma (`PT / EN`), ajustar a meta de dias, exportar backups `.json` ou gerar seu snapshot local (`meus_dados/minhas_deeds.js`).
