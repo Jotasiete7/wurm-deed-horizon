@@ -1911,8 +1911,11 @@ function parseBillboardText(rawText) {
     deed.capital = allyMatch[2].trim();
   }
 
-  const mayorMatch = full.match(/([^\n,]+),\s*mayor,\s*(.+)/i);
-  if (mayorMatch) deed.mayor = mayorMatch[1].trim();
+  // Prefeito / Mayor (nomes de jogadores no Wurm são uma única palavra sem espaços)
+  const mayorIsMatch = full.match(/The mayor is\s+([A-Za-z0-9_-]{2,25})\b/i);
+  const mayorLineMatch = full.match(/(?:^|\n)\s*([A-Za-z0-9_-]{2,25}),\s*mayor\b/i);
+  if (mayorIsMatch) deed.mayor = mayorIsMatch[1].trim();
+  else if (mayorLineMatch) deed.mayor = mayorLineMatch[1].trim();
 
   const prodMatch = full.match(/productivity bonus of\s*([\d\.]+%)/i);
   if (prodMatch) deed.productivityBonus = prodMatch[1];
