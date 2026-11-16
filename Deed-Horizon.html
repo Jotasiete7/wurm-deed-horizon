@@ -941,7 +941,8 @@ const DISMISSED_KEY = "wurm_deeds_dismissed_seeds_v1";
 const CRIT = 30;
 
 let META = parseInt(localStorage.getItem(META_KEY), 10) || 195;
-let LANG = localStorage.getItem(LANG_KEY) || "pt";
+let LANG = localStorage.getItem(LANG_KEY) || ((navigator.language || "").toLowerCase().startsWith("pt") ? "pt" : "en");
+const tr = (pt, en) => LANG === "en" ? en : pt;
 let deeds = [];
 let currentFilter = "all";
 let sortKey = "urgency";
@@ -997,15 +998,15 @@ function calculateExpiry(d){
 }
 const stateOf = days => days < CRIT ? "crit" : days < META ? "warn" : "ok";
 function fmtDateShort(dt){
-  const m = dt.toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+  const m = dt.toLocaleDateString(LANG==="en"?"en-US":"pt-BR",{month:"short"}).replace(".","");
   return dt.getDate()+" "+m+(dt.getFullYear()!==new Date().getFullYear()?" "+dt.getFullYear():"");
 }
 function ago(ts){
   const m = Math.floor((Date.now()-(ts||Date.now()))/6e4);
-  if(m < 60) return { t: "há poucos min", old: false };
-  if(m < 1440) return { t: "há "+Math.floor(m/60)+"h", old: false };
+  if(m < 60) return { t: tr("há poucos min", "just now"), old: false };
+  if(m < 1440) return { t: tr("há "+Math.floor(m/60)+"h", Math.floor(m/60)+"h ago"), old: false };
   const d = Math.floor(m/1440);
-  return { t: "há "+d+"d"+(d>7?" · conferir":""), old: d>7 };
+  return { t: tr("há "+d+"d"+(d>7?" · conferir":""), d+"d ago"+(d>7?" · check":"")), old: d>7 };
 }
 function needIron(d,e){ const gap = META - e.days; return gap>0 ? Math.ceil(gap * toIron(d.monthlyCost)/28) : 0; }
 
@@ -1036,7 +1037,7 @@ function renderHorizon(list){
     const cls = d === 0 ? "hz-tick-start" : d === 365 ? "hz-tick-end" : "";
     h += `<div class="hz-tick ${cls}" style="left:${p*100}%"><span>${lab[d]}</span></div>`;
   });
-  h += `<div class="hz-meta" style="left:${pos(META)*100}%"><span>meta ${META}d</span></div>`;
+  h += `<div class="hz-meta" style="left:${pos(META)*100}%"><span>${tr("meta","target")} ${META}d</span></div>`;
 
   const sorted = [...list].sort((a,b)=>a.e.days-b.e.days);
   let lastLabelPos = -1;
@@ -1070,20 +1071,20 @@ function renderAll(){
 
   if (first) {
     $("summaryMetrics").innerHTML = `
-      <span>Queima: ${coins(burn)}<span style="color:var(--ink-3)">/mês (suas: ${ironToFormatted(burnMine)})</span></span>
+      <span>${tr("Queima","Burn")}: ${coins(burn)}<span style="color:var(--ink-3)">/${tr("mês","mo")} (${tr("suas","yours")}: ${ironToFormatted(burnMine)})</span></span>
       <span class="divider-v" style="display:inline-block;height:12px;vertical-align:middle"></span>
-      <span>Próx: <strong>${esc(first.d.name)}</strong> <span class="mono" style="color:${first.e.days<CRIT?'var(--crit)':'var(--ink)'}">(${first.e.days}d ${first.e.hours}h)</span></span>
+      <span>${tr("Próx","Next")}: <strong>${esc(first.d.name)}</strong> <span class="mono" style="color:${first.e.days<CRIT?'var(--crit)':'var(--ink)'}">(${first.e.days}d ${first.e.hours}h)</span></span>
     `;
   } else {
-    $("summaryMetrics").textContent = "Nenhuma deed cadastrada";
+    $("summaryMetrics").textContent = tr("Nenhuma deed cadastrada", "No deeds tracked");
   }
 
-  $("thNeed").textContent = `Déficit (${META}d)`;
-  $("fAll").textContent = `Todas (${deeds.length})`;
-  $("fMine").textContent = `Minhas (${myDeeds.length})`;
-  $("fPartner").textContent = `Parceiros (${partnerDeeds.length})`;
-  $("fLow").textContent = `Abaixo da meta (${list.filter(x=>x.e.days<META).length})`;
-  $("footerCount").textContent = `${deeds.length} assentamentos monitorados`;
+  $("thNeed").textContent = `${tr("Déficit","Deficit")} (${META}d)`;
+  $("fAll").textContent = `${tr("Todas","All")} (${deeds.length})`;
+  $("fMine").textContent = `${tr("Minhas","Mine")} (${myDeeds.length})`;
+  $("fPartner").textContent = `${tr("Parceiros","Partners")} (${partnerDeeds.length})`;
+  $("fLow").textContent = `${tr("Abaixo da meta","Below target")} (${list.filter(x=>x.e.days<META).length})`;
+  $("footerCount").textContent = `${deeds.length} ${tr("assentamentos monitorados","settlements tracked")}`;
 
   renderHorizon(list);
 
@@ -1112,9 +1113,10 @@ function renderAll(){
     const isSelected = drawerOpen && selectedDeedId === d.id;
 
     const tagClass = d.tag === "Parceiro" ? "partner" : d.tag === "Aliança" ? "ally" : "";
-    const tagLabel = d.tag === "Parceiro" && d.mayor ? `Parceiro · ${d.mayor}` : (d.tag || "Minha");
+    const tagText = d.tag === "Parceiro" ? tr("Parceiro","Partner") : d.tag === "Aliança" ? tr("Aliança","Alliance") : d.tag === "Outro" ? tr("Outro","Other") : tr("Minha","Mine");
+    const tagLabel = d.tag === "Parceiro" && d.mayor ? `${tagText} · ${d.mayor}` : tagText;
     const warnRatio = (d.creatureRatio && d.creatureRatio < 15.0)
-      ? `<span class="tag warn-ratio">Pasto ${d.creatureRatio.toFixed(1)}</span>`
+      ? `<span class="tag warn-ratio">${tr("Pasto","Pasture")} ${d.creatureRatio.toFixed(1)}</span>`
       : '';
 
     const subText = d.notes
@@ -1150,8 +1152,8 @@ function renderAll(){
           <div class="coffer-cell">
             <div>
               ${coins(estCoffer)}
-              ${diff > 50 ? `<div class="due-sub" title="No último print: ${ironToFormatted(snapCoffer)}">-${ironToFormatted(diff)} consumido</div>` : ''}
-              ${chips > 0 ? `<div class="due-sub">${ironToFormatted(chips)} em chips</div>` : ''}
+              ${diff > 50 ? `<div class="due-sub" title="${tr("No último print","Last snapshot")}: ${ironToFormatted(snapCoffer)}">-${ironToFormatted(diff)} ${tr("consumido","spent")}</div>` : ''}
+              ${chips > 0 ? `<div class="due-sub">${ironToFormatted(chips)} ${tr("em chips","in chips")}</div>` : ''}
             </div>
             <button class="quick-add" data-act="dep" data-id="${esc(d.id)}" title="Depositar moedas">+</button>
           </div>
@@ -1214,18 +1216,18 @@ function renderDrawer(){
   if (d) selectedDeedId = d.id;
 
   if (activeDrawerTab === "planner") {
-    $("drawerTitle").textContent = "Planejador de Upkeep";
+    $("drawerTitle").textContent = tr("Planejador de Upkeep", "Upkeep Planner");
     renderDrawerPlanner();
     return;
   }
   if (activeDrawerTab === "billboard") {
-    $("drawerTitle").textContent = "Ler Settlement Billboard";
+    $("drawerTitle").textContent = tr("Ler Settlement Billboard", "Parse Settlement Billboard");
     renderDrawerBillboard();
     return;
   }
   if (!d) {
-    $("drawerTitle").textContent = "Nenhuma deed";
-    $("drawerBody").innerHTML = `<p style="color:var(--ink-3)">Cadastre uma deed colando um print ou texto na aba Billboard.</p>`;
+    $("drawerTitle").textContent = tr("Nenhuma deed", "No deeds");
+    $("drawerBody").innerHTML = `<p style="color:var(--ink-3)">${tr("Cadastre uma deed colando um print ou texto na aba Billboard.", "Add a deed by pasting a screenshot or text in the Billboard tab.")}</p>`;
     return;
   }
 
@@ -1254,14 +1256,14 @@ function renderDrawerOverview(d){
   ].filter(Boolean).join(" · ") || "Sem bônus";
 
   const ratioStatus = (d.creatureRatio && d.creatureRatio < 15.0)
-    ? `<span style="color:var(--crit)">${d.creatureRatio} (Superlotado)</span>`
+    ? `<span style="color:var(--crit)">${d.creatureRatio} (${tr("Superlotado","Overcrowded")})</span>`
     : `${d.creatureRatio || "?"} (ideal ≥ 15)`;
 
   $("drawerBody").innerHTML = `
     <div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
-        <p style="margin:0;color:var(--ink-2);font-size:12.5px;font-style:italic">${esc(d.motto || "Sem lema registrado")}</p>
-        <button class="btn sm" id="btnExportICS" title="Agendar alerta 15d antes no calendário">
+        <p style="margin:0;color:var(--ink-2);font-size:12.5px;font-style:italic">${esc(d.motto || tr("Sem lema registrado","No motto recorded"))}</p>
+        <button class="btn sm" id="btnExportICS" title="${tr("Agendar alerta 15d antes no calendário","Schedule 15d-before calendar alert")}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           .ics
         </button>
@@ -1269,55 +1271,55 @@ function renderDrawerOverview(d){
 
       <div class="prop-list">
         <div class="prop-row">
-          <span class="prop-label">Categoria</span>
+          <span class="prop-label">${tr("Categoria","Category")}</span>
           <select class="prop-select" id="propTag">
-            <option value="Minha" ${(d.tag||"Minha")==="Minha"?"selected":""}>Minha</option>
-            <option value="Parceiro" ${d.tag==="Parceiro"?"selected":""}>Parceiro</option>
-            <option value="Aliança" ${d.tag==="Aliança"?"selected":""}>Aliança</option>
-            <option value="Outro" ${d.tag==="Outro"?"selected":""}>Outro</option>
+            <option value="Minha" ${(d.tag||"Minha")==="Minha"?"selected":""}>${tr("Minha","Mine")}</option>
+            <option value="Parceiro" ${d.tag==="Parceiro"?"selected":""}>${tr("Parceiro","Partner")}</option>
+            <option value="Aliança" ${d.tag==="Aliança"?"selected":""}>${tr("Aliança","Alliance")}</option>
+            <option value="Outro" ${d.tag==="Outro"?"selected":""}>${tr("Outro","Other")}</option>
           </select>
         </div>
         <div class="prop-row">
-          <span class="prop-label">Responsável</span>
-          <input type="text" class="prop-input" id="propMayor" value="${esc(d.mayor||"")}" placeholder="Adicionar prefeito...">
+          <span class="prop-label">${tr("Responsável","Mayor / Owner")}</span>
+          <input type="text" class="prop-input" id="propMayor" value="${esc(d.mayor||"")}" placeholder="${tr("Adicionar prefeito...","Add mayor...")}">
         </div>
         <div class="prop-row">
-          <span class="prop-label">Anotação</span>
-          <input type="text" class="prop-input" id="propNotes" value="${esc(d.notes||"")}" placeholder="Adicionar nota rápida...">
+          <span class="prop-label">${tr("Anotação","Note")}</span>
+          <input type="text" class="prop-input" id="propNotes" value="${esc(d.notes||"")}" placeholder="${tr("Adicionar nota rápida...","Add quick note...")}">
         </div>
       </div>
     </div>
 
     <div>
-      <div class="section-title">Especificações</div>
+      <div class="section-title">${tr("Especificações","Specifications")}</div>
       <div class="spec-grid">
         <div class="spec-box">
-          <span>Vencimento</span>
+          <span>${tr("Vencimento","Upkeep left")}</span>
           <strong class="mono">${e.days}d ${e.hours}h ${e.mins}m</strong>
         </div>
         <div class="spec-box">
-          <span>Cofre Estimado</span>
+          <span>${tr("Cofre Estimado","Est. Coffers")}</span>
           <strong>${coins(estCoffer)}</strong>
         </div>
         <div class="spec-box">
-          <span>Dimensões</span>
+          <span>${tr("Dimensões","Size")}</span>
           <strong class="mono">${esc(d.size || d.width+"x"+d.height)} (${d.tiles || d.width*d.height})</strong>
         </div>
         <div class="spec-box">
-          <span>Perímetro / Guardas</span>
+          <span>${tr("Perímetro / Guardas","Perimeter / Guards")}</span>
           <strong class="mono">${d.perimeter} / ${d.guards}</strong>
         </div>
         <div class="spec-box">
-          <span>Criaturas (${d.brandedCreatures||0} branded)</span>
+          <span>${tr("Criaturas","Creatures")} (${d.brandedCreatures||0} branded)</span>
           <strong>${ratioStatus}</strong>
         </div>
         <div class="spec-box">
-          <span>Regime / Aliança</span>
-          <strong>${esc(d.democracy||"Padrão")}${d.alliance?" · "+esc(d.alliance):""}</strong>
+          <span>${tr("Regime / Aliança","Governance / Alliance")}</span>
+          <strong>${esc(d.democracy||tr("Padrão","Standard"))}${d.alliance?" · "+esc(d.alliance):""}</strong>
         </div>
         <div class="spec-box" style="grid-column:1/-1">
-          <span>Bônus de Fé</span>
-          <strong>${faithParts}</strong>
+          <span>${tr("Bônus de Fé","Faith Bonuses")}</span>
+          <strong>${faithParts === "Sem bônus" ? tr("Sem bônus","None") : faithParts}</strong>
         </div>
         ${chips > 0 ? `<div class="spec-box" style="grid-column:1/-1"><span>Village Upkeep Chips</span><strong>${coins(chips)}</strong></div>` : ''}
       </div>
@@ -1325,16 +1327,16 @@ function renderDrawerOverview(d){
 
     ${d.imageSnapshot ? `
       <div>
-        <div class="section-title">Último Snapshot</div>
+        <div class="section-title">${tr("Último Snapshot","Latest Snapshot")}</div>
         <div class="thumb-wrap" onclick="openLightbox('${esc(d.imageSnapshot)}')">
-          <img src="${esc(d.imageSnapshot)}" alt="Print de ${esc(d.name)}">
+          <img src="${esc(d.imageSnapshot)}" alt="${esc(d.name)}">
         </div>
       </div>
     ` : ''}
 
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <button class="btn sm danger" id="btnDelDeed">Remover deed</button>
-      <button class="btn sm primary" onclick="openDrawer('deposit', '${esc(d.id)}')">Depositar moedas</button>
+      <button class="btn sm danger" id="btnDelDeed">${tr("Remover deed","Remove deed")}</button>
+      <button class="btn sm primary" onclick="openDrawer('deposit', '${esc(d.id)}')">${tr("Depositar moedas","Deposit coins")}</button>
     </div>
   `;
 
@@ -1372,12 +1374,12 @@ function renderDrawerDeposit(d){
 
   $("drawerBody").innerHTML = `
     <div class="preview-card">
-      <div class="preview-row"><span>Saldo estimado atual</span><strong>${coins(estCoffer)}</strong></div>
-      <div class="preview-row"><span>Custo mensal</span><strong>${coins(toIron(d.monthlyCost))}/mês</strong></div>
+      <div class="preview-row"><span>${tr("Saldo estimado atual","Current est. coffers")}</span><strong>${coins(estCoffer)}</strong></div>
+      <div class="preview-row"><span>${tr("Custo mensal","Monthly cost")}</span><strong>${coins(toIron(d.monthlyCost))}/${tr("mês","mo")}</strong></div>
     </div>
 
     <div class="field-group">
-      <span class="field-label">Atalhos rápidos</span>
+      <span class="field-label">${tr("Atalhos rápidos","Quick presets")}</span>
       <div class="chips-row">
         <button class="chip-btn" data-preset="50c">+50c</button>
         <button class="chip-btn" data-preset="1s">+1s</button>
@@ -1396,16 +1398,16 @@ function renderDrawerDeposit(d){
     </div>
 
     <div class="field-group">
-      <label class="field-label" for="depNote">Observação (opcional)</label>
-      <input type="text" class="input-box" id="depNote" value="${esc(depositInput.note)}" placeholder="Ex: Char principal, rateio...">
+      <label class="field-label" for="depNote">${tr("Observação (opcional)","Note (optional)")}</label>
+      <input type="text" class="input-box" id="depNote" value="${esc(depositInput.note)}" placeholder="${tr("Ex: Char principal, rateio...","e.g. Main char, split...")}">
     </div>
 
     <div class="preview-card" id="depPreviewCard"></div>
 
-    <button class="btn primary" id="btnConfirmDep" style="height:34px;width:100%">Confirmar depósito</button>
+    <button class="btn primary" id="btnConfirmDep" style="height:34px;width:100%">${tr("Confirmar depósito","Confirm deposit")}</button>
 
     <div>
-      <div class="section-title">Histórico de depósitos</div>
+      <div class="section-title">${tr("Histórico de depósitos","Deposit history")}</div>
       <div class="hist-list" id="depHistList"></div>
     </div>
   `;
@@ -1431,9 +1433,9 @@ function renderDrawerDeposit(d){
     const addH = Math.round((addedDays - addD) * 24);
 
     $("depPreviewCard").innerHTML = `
-      <div class="preview-row"><span>Ganho de prazo</span><strong class="mono" style="color:var(--ok)">+${addD}d ${addH}h (${addedDays.toFixed(1)}d)</strong></div>
-      <div class="preview-row"><span>Novo cofre estimado</span><strong>${coins(estCoffer + addedIron)}</strong></div>
-      <div class="preview-row"><span>Nova expiração</span><strong class="mono">${fmtDateShort(newTarget)} (${newDays}d ${newHours}h)</strong></div>
+      <div class="preview-row"><span>${tr("Ganho de prazo","Time gained")}</span><strong class="mono" style="color:var(--ok)">+${addD}d ${addH}h (${addedDays.toFixed(1)}d)</strong></div>
+      <div class="preview-row"><span>${tr("Novo cofre estimado","New est. coffers")}</span><strong>${coins(estCoffer + addedIron)}</strong></div>
+      <div class="preview-row"><span>${tr("Nova expiração","New expiry")}</span><strong class="mono">${fmtDateShort(newTarget)} (${newDays}d ${newHours}h)</strong></div>
     `;
   };
 
@@ -1475,8 +1477,8 @@ function renderDrawerDeposit(d){
 function renderDrawerPlanner(){
   $("drawerBody").innerHTML = `
     <div class="pills" style="background:var(--bg);padding:3px;border-radius:6px;border:1px solid var(--border)">
-      <button class="pill" style="flex:1" id="pTabBudget" aria-pressed="${plannerSubTab==='budget'}">Distribuir Orçamento</button>
-      <button class="pill" style="flex:1" id="pTabMeta" aria-pressed="${plannerSubTab==='meta'}">Meta de Dias</button>
+      <button class="pill" style="flex:1" id="pTabBudget" aria-pressed="${plannerSubTab==='budget'}">${tr("Distribuir Orçamento","Budget Splitter")}</button>
+      <button class="pill" style="flex:1" id="pTabMeta" aria-pressed="${plannerSubTab==='meta'}">${tr("Meta de Dias","Target Days")}</button>
     </div>
 
     <div id="plannerContent"></div>
@@ -1525,7 +1527,7 @@ function renderDrawerPlanner(){
   } else {
     $("plannerContent").innerHTML = `
       <div class="field-group" style="margin-bottom:10px">
-        <span class="field-label">Orçamento disponível (atalhos)</span>
+        <span class="field-label">${tr("Orçamento disponível (atalhos)","Available budget (presets)")}</span>
         <div class="chips-row">
           <button class="chip-btn" data-bpreset="1s">1s</button>
           <button class="chip-btn" data-bpreset="2s">2s</button>
@@ -1542,7 +1544,7 @@ function renderDrawerPlanner(){
       </div>
       <div class="preview-card" id="bgtSummary" style="margin-bottom:10px"></div>
       <div id="bgtRows"></div>
-      <button class="btn primary" id="btnApplyBudget" style="width:100%;height:34px;margin-top:14px">Aplicar distribuição sugerida</button>
+      <button class="btn primary" id="btnApplyBudget" style="width:100%;height:34px;margin-top:14px">${tr("Aplicar distribuição sugerida","Apply suggested split")}</button>
     `;
 
     const refreshBudget = () => {
@@ -1597,18 +1599,21 @@ function renderDrawerPlanner(){
 function renderDrawerBillboard(){
   $("drawerBody").innerHTML = `
     <p style="margin:0;color:var(--ink-2);font-size:12.5px">
-      Você pode pressionar <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> em qualquer lugar da página com um print ou arrastar o arquivo, ou colar o texto manualmente abaixo.
+      ${tr(
+        'Você pode pressionar <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> em qualquer lugar da página com um print ou arrastar o arquivo, ou colar o texto manualmente abaixo.',
+        'Press <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> anywhere on the page with a screenshot, drag & drop an image, or paste the billboard text below.'
+      )}
     </p>
     <div class="field-group">
-      <label class="field-label" for="rawText">Texto do Settlement Billboard</label>
+      <label class="field-label" for="rawText">${tr("Texto do Settlement Billboard","Settlement Billboard Text")}</label>
       <textarea class="input-box" id="rawText" placeholder="The size of Freedom Homestead is 21 by 41..."></textarea>
     </div>
     <div style="display:flex;gap:8px">
       <label class="btn" style="flex:1">
-        Enviar imagem (OCR)
+        ${tr("Enviar imagem (OCR)","Upload image (OCR)")}
         <input type="file" id="drawerFileInput" accept="image/*" hidden>
       </label>
-      <button class="btn primary" id="btnParseManual" style="flex:1">Processar texto</button>
+      <button class="btn primary" id="btnParseManual" style="flex:1">${tr("Processar texto","Parse text")}</button>
     </div>
   `;
 
@@ -1715,6 +1720,32 @@ function applyLangLabels(){
     ths[2].textContent = en ? "Coverage" : "Cobertura";
     ths[3].querySelector("button").textContent = en ? "Est. Coffers" : "Cofre estimado";
     ths[4].querySelector("button").textContent = en ? "Cost / month" : "Custo / mês";
+  }
+  const setBtnText = (id, txt) => {
+    const el = $(id);
+    if (!el || !el.childNodes) return;
+    for (const node of el.childNodes) {
+      if (node.nodeType === 3 && node.textContent.trim()) { node.textContent = " " + txt + " "; return; }
+    }
+  };
+  setBtnText("btnCalc", en ? "Plan" : "Planejar");
+  setBtnText("btnDeposit", en ? "Deposit" : "Depositar");
+  setBtnText("btnExport", en ? "Export backup (.json)" : "Exportar backup (.json)");
+  setBtnText("btnExportSeed", en ? "Export local seed (.js)" : "Exportar snapshot local (.js)");
+  setBtnText("btnDemo", en ? "Load sample data" : "Carregar exemplo (Demo)");
+  setBtnText("btnSeed", en ? "Reset / Clear data" : "Limpar / Restaurar local");
+  const dtabs = document.querySelectorAll(".dtab");
+  if (dtabs.length >= 4) {
+    dtabs[0].textContent = en ? "Overview" : "Visão Geral";
+    dtabs[1].textContent = en ? "Deposit" : "Depositar";
+    dtabs[2].textContent = en ? "Planner" : "Planejador";
+    dtabs[3].textContent = "Billboard";
+  }
+  const hint = document.querySelector(".hint-bar span:first-child");
+  if (hint) {
+    hint.innerHTML = en
+      ? 'Tip: snip the Settlement Billboard (<kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd>) and press <kbd>Ctrl</kbd> <kbd>V</kbd> anywhere.'
+      : 'Dica: faça um recorte do Settlement Billboard (<kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd>) e pressione <kbd>Ctrl</kbd> <kbd>V</kbd> em qualquer lugar.';
   }
 }
 
