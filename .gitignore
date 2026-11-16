@@ -1,0 +1,13 @@
+# Dados pessoais do usuário (NUNCA versionar)
+meus_dados/
+prints_exemplo/
+*.local.*
+*.bak
+*.backup.json
+*deeds_backup*.json
+minhas_deeds.js
+
+# Arquivos temporários / sistema
+.DS_Store
+Thumbs.db
+desktop.ini

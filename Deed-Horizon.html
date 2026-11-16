@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deed Horizon</title>
+<!-- Só o OCR usa a internet (biblioteca e dados de idioma). O resto funciona offline. -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root {
+  --bg: #09090b;
+  --surface: #121215;
+  --surface-hover: #18181c;
+  --surface-active: #27272a;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --ink: #f4f4f5;
+  --ink-2: #a1a1aa;
+  --ink-3: #52525b;
+
+  --crit: #f87171;
+  --warn: #fbbf24;
+  --ok: #34d399;
+
+  --cg: #e2b86b;
+  --cs: #d4d4d8;
+  --cc: #c9825b;
+  --ci: #71717a;
+
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font: 13.5px/1.45 var(--sans);
+  letter-spacing: -0.015em;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 1.5px solid var(--ink-2); outline-offset: 2px; }
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.coin { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.coin b { font-weight: 500; margin: 0 0.35em 0 0.06em; font-size: 0.9em; }
+.coin b:last-child { margin-right: 0; }
+.coin .g { color: var(--cg); }
+.coin .s { color: var(--cs); }
+.coin .c { color: var(--cc); }
+.coin .i { color: var(--ci); }
+
+/* ---------- Topbar Unificada ---------- */
+.topbar {
+  height: 52px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.top-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.brand-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+.divider-v { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
+
+.pills { display: flex; align-items: center; gap: 2px; }
+.pill {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.pill:hover { color: var(--ink); background: var(--surface); }
+.pill[aria-pressed="true"] { background: var(--surface-active); color: var(--ink); font-weight: 500; }
+
+.top-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.top-center strong { color: var(--ink); font-weight: 500; }
+.ocr-status { color: var(--warn); font-family: var(--mono); font-size: 11.5px; }
+
+.top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--border-strong); color: var(--ink); background: var(--surface-hover); }
+.btn.primary {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.btn.primary:hover { background: #ffffff; border-color: #ffffff; }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--surface); border-color: var(--border); }
+.btn.danger { color: var(--crit); }
+.btn.danger:hover { background: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.25); }
+.btn.sm { height: 26px; padding: 0 8px; font-size: 12px; }
+.btn.icon-only { width: 30px; padding: 0; }
+
+.kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.14);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Menu dropdown (⋯) */
+.menu-wrap { position: relative; }
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: 36px;
+  width: 196px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 4px;
+  display: none;
+  flex-direction: column;
+  z-index: 50;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+.dropdown.open { display: flex; }
+.dropdown button, .dropdown label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.dropdown button:hover, .dropdown label:hover { background: var(--surface-hover); color: var(--ink); }
+.dropdown .sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ---------- Trilha de Horizonte Ultra-Slim ---------- */
+.horizon-strip {
+  height: 44px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg);
+}
+.hz-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.hz-track {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.hz-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--border);
+  transform: translateY(-50%);
+}
+.hz-tick {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 8px;
+  background: var(--ink-3);
+  transform: translateY(-50%);
+}
+.hz-tick span {
+  position: absolute;
+  top: -14px;
+  left: 0;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.hz-tick.hz-tick-start span { left: 2px; transform: none; }
+.hz-tick.hz-tick-end span { left: auto; right: 2px; transform: none; }
+.hz-meta {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  border-left: 1px dashed var(--ink-2);
+  opacity: 0.55;
+}
+.hz-meta span {
+  position: absolute;
+  bottom: -3px;
+  left: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.hz-pin {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+.hz-pin i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: transform 0.12s;
+}
+.hz-pin.warn i { background: var(--warn); }
+.hz-pin.crit i { background: var(--crit); box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.25); }
+.hz-pin:hover i, .hz-pin.selected i { transform: scale(1.45); }
+.hz-pin em {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--bg);
+  padding: 0 3px;
+}
+.hz-pin .hz-tip {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+.hz-pin:hover .hz-tip { opacity: 1; }
+
+/* ---------- Workspace (Grid + Slide-over Drawer) ---------- */
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+.main-pane {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px 32px;
+}
+
+.table-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+  white-space: nowrap;
+}
+th button { color: inherit; font-weight: inherit; text-transform: inherit; letter-spacing: inherit; }
+th button:hover, th button[aria-pressed="true"] { color: var(--ink); }
+th button[aria-pressed="true"]::after { content: " ↓"; font-family: var(--mono); }
+
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr { transition: background 0.1s; cursor: pointer; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface-hover); }
+tbody tr.selected { background: rgba(255, 255, 255, 0.045); }
+tbody tr.selected td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
+tbody tr.crit td:first-child { box-shadow: inset 2px 0 0 var(--crit); }
+
+.cell-deed { display: flex; flex-direction: column; gap: 2px; }
+.deed-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.deed-name { font-weight: 500; color: var(--ink); font-size: 13.5px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.crit { background: var(--crit); }
+
+.tag {
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.02);
+}
+.tag.partner { color: #93c5fd; border-color: rgba(147, 197, 253, 0.2); background: rgba(147, 197, 253, 0.06); }
+.tag.ally { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.2); background: rgba(196, 181, 253, 0.06); }
+.tag.warn-ratio { color: var(--crit); border-color: rgba(248, 113, 113, 0.28); background: rgba(248, 113, 113, 0.08); }
+
+.sub-line { font-size: 12px; color: var(--ink-3); max-width: 44ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-line.note { color: var(--ink-2); }
+
+.due-main { font-family: var(--mono); font-size: 13px; color: var(--ink); font-weight: 500; }
+tr.crit .due-main { color: var(--crit); }
+.due-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.due-sub.stale { color: var(--warn); }
+
+.meter-wrap { display: flex; flex-direction: column; gap: 4px; width: 136px; }
+.meter { height: 4px; background: var(--surface-active); border-radius: 2px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); border-radius: 2px; }
+tr.warn .meter i { background: var(--warn); }
+tr.crit .meter i { background: var(--crit); }
+.meter-label { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+
+.coffer-cell { display: flex; align-items: center; gap: 8px; }
+.quick-add {
+  opacity: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  transition: opacity 0.12s, color 0.12s, border-color 0.12s;
+}
+tr:hover .quick-add, .quick-add:focus-visible { opacity: 1; }
+.quick-add:hover { color: var(--ink); border-color: var(--ink-2); }
+
+.hint-bar {
+  max-width: 1400px;
+  margin: 12px auto 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  padding: 0 2px;
+}
+.hint-bar kbd {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+/* ---------- Slide-Over Drawer (390px) ---------- */
+.drawer {
+  width: 0;
+  overflow: hidden;
+  border-left: 0 solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+.drawer.open { width: 400px; border-left-width: 1px; }
+.drawer-inner { width: 400px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+.drawer-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.drawer-title { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawer-tabs {
+  display: flex;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+.dtab {
+  padding: 9px 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  border-bottom: 1.5px solid transparent;
+  margin-bottom: -1px;
+  font-weight: 500;
+}
+.dtab:hover { color: var(--ink-2); }
+.dtab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prop-list { display: flex; flex-direction: column; gap: 6px; }
+.prop-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.prop-label { font-size: 12px; color: var(--ink-3); }
+.prop-input, .prop-select {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 12.5px;
+  color: var(--ink);
+  transition: background 0.12s, border-color 0.12s;
+}
+.prop-input:hover, .prop-select:hover { background: rgba(255, 255, 255, 0.03); }
+.prop-input:focus, .prop-select:focus { background: var(--bg); border-color: var(--border-strong); outline: none; }
+.prop-select option { background: var(--surface); color: var(--ink); }
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.spec-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 10px;
+}
+.spec-box span { display: block; font-size: 11px; color: var(--ink-3); margin-bottom: 2px; }
+.spec-box strong { font-size: 12.5px; font-weight: 500; color: var(--ink); }
+
+.thumb-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+  cursor: zoom-in;
+}
+.thumb-wrap img { display: block; width: 100%; max-height: 150px; object-fit: cover; opacity: 0.9; transition: opacity 0.12s; }
+.thumb-wrap:hover img { opacity: 1; }
+
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 11.5px; color: var(--ink-2); }
+.input-box {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.input-box:focus { border-color: var(--border-strong); outline: none; }
+textarea.input-box { min-height: 140px; font-family: var(--mono); font-size: 12px; resize: vertical; }
+
+.coin-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.coin-field label { display: block; font-size: 10.5px; font-family: var(--mono); margin-bottom: 3px; }
+.coin-field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 4px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.coin-field input:focus { border-color: var(--border-strong); outline: none; }
+
+.chips-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip-btn {
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--ink-2);
+}
+.chip-btn:hover { border-color: var(--border-strong); color: var(--ink); }
+
+.preview-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+}
+.preview-row { display: flex; justify-content: space-between; align-items: center; }
+.preview-row span { color: var(--ink-3); }
+
+.hist-list { display: flex; flex-direction: column; }
+.hist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.hist-item:last-child { border-bottom: 0; }
+.undo-btn {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-left: 6px;
+}
+.undo-btn:hover { color: var(--crit); }
+
+.plan-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.plan-row:last-child { border-bottom: 0; }
+.plan-row small { display: block; color: var(--ink-3); font-size: 11px; margin-top: 1px; }
+
+input[type="range"] { width: 100%; accent-color: var(--ink); }
+
+/* ---------- Lightbox & Drag Overlay & Toast ---------- */
+dialog.lightbox {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+dialog.lightbox::backdrop { background: rgba(0, 0, 0, 0.85); }
+dialog.lightbox img { max-width: 100%; max-height: 88vh; border-radius: 8px; border: 1px solid var(--border-strong); }
+
+#toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+  padding: 9px 14px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 60;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+#toast.on { opacity: 1; transform: translateY(0); }
+
+body.drag::after {
+  content: "Solte a imagem do Settlement Billboard para ler";
+  position: fixed;
+  inset: 12px;
+  border: 1.5px dashed var(--ink-2);
+  border-radius: 8px;
+  background: rgba(9, 9, 11, 0.9);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  z-index: 80;
+}
+
+@media (max-width: 960px) {
+  .top-center { display: none; }
+  .drawer.open { position: fixed; right: 0; top: 52px; bottom: 0; z-index: 40; width: min(400px, 100vw); box-shadow: -12px 0 32px rgba(0,0,0,0.6); }
+  .drawer-inner { width: min(400px, 100vw); }
+}
+@media (max-width: 680px) {
+  .topbar { height: auto; padding: 10px 14px; flex-wrap: wrap; }
+  .horizon-strip { padding: 0 14px; }
+  .main-pane { padding: 12px 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR UNIFICADA -->
+<header class="topbar">
+  <div class="top-left">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+      </div>
+      <span>Deed Horizon</span>
+    </div>
+    <div class="divider-v"></div>
+    <nav class="pills" role="group" aria-label="Filtrar deeds">
+      <button class="pill" id="fAll" aria-pressed="true">Todas</button>
+      <button class="pill" id="fMine" aria-pressed="false">Minhas</button>
+      <button class="pill" id="fPartner" aria-pressed="false">Parceiros</button>
+      <button class="pill" id="fLow" aria-pressed="false">Abaixo da meta</button>
+    </nav>
+  </div>
+
+  <div class="top-center">
+    <span id="summaryMetrics"></span>
+    <span id="ocr" class="ocr-status" role="status"></span>
+  </div>
+
+  <div class="top-actions">
+    <button class="btn" id="btnCalc">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      Planejar
+    </button>
+    <button class="btn" id="btnDeposit">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+      Depositar
+    </button>
+    <button class="btn primary" id="btnPaste">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+      Billboard
+      <span class="kbd">Ctrl V</span>
+    </button>
+
+    <div class="menu-wrap">
+      <button class="btn icon-only" id="btnMenu" aria-label="Opções de backup" title="Backup e restauração">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      </button>
+      <div class="dropdown" id="sysMenu">
+        <button id="btnMeta">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          <span id="lblMenuMeta">Alterar meta (dias)</span>
+        </button>
+        <button id="btnLang">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="lblMenuLang">Language: EN</span>
+        </button>
+        <div class="sep"></div>
+        <button id="btnExport">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar backup (.json)
+        </button>
+        <button id="btnExportSeed">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar snapshot local (.js)
+        </button>
+        <label>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar backup (.json)
+          <input type="file" id="importFile" accept=".json" hidden>
+        </label>
+        <div class="sep"></div>
+        <button id="btnDemo">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Carregar exemplo (Demo)
+        </button>
+        <button id="btnSeed" class="danger">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Limpar / Restaurar local
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- TRILHA DE HORIZONTE ULTRA-SLIM -->
+<section class="horizon-strip" aria-label="Horizonte de expiração">
+  <span class="hz-label">Horizonte</span>
+  <div class="hz-track" id="hz"></div>
+</section>
+
+<!-- WORKSPACE (TABELA + GAVETA LATERAL) -->
+<div class="workspace">
+  <main class="main-pane">
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><button data-sort="name">Assentamento</button></th>
+              <th><button data-sort="urgency" aria-pressed="true">Vencimento</button></th>
+              <th>Cobertura</th>
+              <th><button data-sort="coffers">Cofre estimado</button></th>
+              <th><button data-sort="burn">Custo / mês</button></th>
+              <th id="thNeed">Déficit p/ meta</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="hint-bar">
+      <span>Dica: faça um recorte do Settlement Billboard (<kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd>) e pressione <kbd>Ctrl</kbd> <kbd>V</kbd> em qualquer lugar.</span>
+      <span class="mono" id="footerCount"></span>
+    </div>
+  </main>
+
+  <!-- GAVETA LATERAL (SLIDE-OVER DRAWER) -->
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-inner">
+      <div class="drawer-head">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+          <span class="drawer-title" id="drawerTitle">Detalhes</span>
+        </div>
+        <button class="btn ghost icon-only" id="btnCloseDrawer" title="Fechar (Esc)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="drawer-tabs" id="drawerTabs">
+        <button class="dtab active" data-dtab="overview">Visão Geral</button>
+        <button class="dtab" data-dtab="deposit">Depositar</button>
+        <button class="dtab" data-dtab="planner">Planejador</button>
+        <button class="dtab" data-dtab="billboard">Billboard</button>
+      </div>
+
+      <div class="drawer-body" id="drawerBody"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- LIGHTBOX PARA AMPLIAR PRINT -->
+<dialog class="lightbox" id="lightbox" onclick="this.close()">
+  <img id="lightboxImg" alt="Settlement Billboard ampliado">
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Dados locais opcionais (ignorados pelo .gitignore; inexistente no clone público) -->
+<script src="meus_dados/minhas_deeds.js"></script>
+<script>
+// Versão pública limpa: nenhum dado pessoal hardcoded.
+// Se meus_dados/minhas_deeds.js existir localmente, window.WURM_LOCAL_SEEDS será usado como seed.
+const SEED_DEEDS = [];
+
+// Dados fictícios opcionais para demonstração (carregados apenas sob demanda)
+const DEMO_DEEDS = [
+  {
+    id: "demo-freedom-homestead",
+    name: "Freedom Homestead",
+    motto: "Quiet valley near the northern lake",
+    size: "21 by 21",
+    width: 21,
+    height: 21,
+    tiles: 441,
+    perimeter: 5,
+    guards: 0,
+    coffers: { silver: 0, copper: 65, iron: 0 },
+    chips: { silver: 0, copper: 0, iron: 0 },
+    monthlyCost: { silver: 1, copper: 0, iron: 0 },
+    rawMonthlyCostStr: "1 silver",
+    remainingDays: 18,
+    remainingHours: 14,
+    remainingMinutes: 20,
+    creatureRatio: 31.5,
+    brandedCreatures: 6,
+    faith: { war: 0, healing: 0, enchanting: 0, raritySeconds: 0 },
+    democracy: "Democracy",
+    alliance: "Northern Traders",
+    capital: "Silverlake Outpost",
+    mayor: "",
+    tag: "Minha",
+    notes: "Exemplo fictício (critico)",
+    snapshotTimestamp: Date.now() - (1000 * 60 * 15),
+    imageSnapshot: ""
+  },
+  {
+    id: "demo-silverlake-outpost",
+    name: "Silverlake Outpost",
+    motto: "Harbor & trade post",
+    size: "31 by 31",
+    width: 31,
+    height: 31,
+    tiles: 961,
+    perimeter: 5,
+    guards: 2,
+    coffers: { silver: 9, copper: 40, iron: 0 },
+    chips: { silver: 2, copper: 50, iron: 0 },
+    monthlyCost: { silver: 2, copper: 10, iron: 0 },
+    rawMonthlyCostStr: "2 silver and 10 copper",
+    remainingDays: 125,
+    remainingHours: 8,
+    remainingMinutes: 0,
+    creatureRatio: 24.0,
+    brandedCreatures: 12,
+    faith: { war: 0, healing: 0, enchanting: 1.25, raritySeconds: 1 },
+    democracy: "Democracy",
+    alliance: "Northern Traders",
+    capital: "Silverlake Outpost",
+    mayor: "",
+    tag: "Minha",
+    notes: "Exemplo fictício (atenção)",
+    snapshotTimestamp: Date.now() - (1000 * 60 * 45),
+    imageSnapshot: ""
+  },
+  {
+    id: "demo-ironforge-harbour",
+    name: "Ironforge Harbour",
+    motto: "Open docks for allies",
+    size: "25 by 25",
+    width: 25,
+    height: 25,
+    tiles: 625,
+    perimeter: 5,
+    guards: 0,
+    coffers: { silver: 16, copper: 20, iron: 0 },
+    chips: { silver: 0, copper: 0, iron: 0 },
+    monthlyCost: { silver: 1, copper: 50, iron: 0 },
+    rawMonthlyCostStr: "1 silver and 50 copper",
+    remainingDays: 302,
+    remainingHours: 4,
+    remainingMinutes: 10,
+    creatureRatio: 40.0,
+    brandedCreatures: 4,
+    faith: { war: 0, healing: 0, enchanting: 0, raritySeconds: 0 },
+    democracy: "Non-democracy",
+    alliance: "Northern Traders",
+    capital: "Silverlake Outpost",
+    mayor: "AllyMayor",
+    tag: "Parceiro",
+    notes: "Exemplo fictício (coberta)",
+    snapshotTimestamp: Date.now() - (1000 * 60 * 10),
+    imageSnapshot: ""
+  }
+];
+
+function getActiveSeeds(){
+  return (Array.isArray(window.WURM_LOCAL_SEEDS) && window.WURM_LOCAL_SEEDS.length)
+    ? window.WURM_LOCAL_SEEDS
+    : SEED_DEEDS;
+}
+
+const STORAGE_KEY = "wurm_deeds_horizon_v1";
+const META_KEY = "wurm_deeds_meta";
+const LANG_KEY = "wurm_deeds_lang_v1";
+const DISMISSED_KEY = "wurm_deeds_dismissed_seeds_v1";
+const CRIT = 30;
+
+let META = parseInt(localStorage.getItem(META_KEY), 10) || 195;
+let LANG = localStorage.getItem(LANG_KEY) || "pt";
+let deeds = [];
+let currentFilter = "all";
+let sortKey = "urgency";
+
+// Estado da Gaveta
+let drawerOpen = false;
+let activeDrawerTab = "overview"; // overview | deposit | planner | billboard
+let selectedDeedId = null;
+let plannerSubTab = "budget"; // meta | budget
+let budgetCoins = { gold: 0, silver: 5, copper: 0, iron: 0 };
+let depositInput = { gold: 0, silver: 3, copper: 0, iron: 0, note: "" };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Sementes excluídas ---------- */
+function getDismissedSeeds(){
+  try { return JSON.parse(localStorage.getItem(DISMISSED_KEY)) || []; } catch(e){ return []; }
+}
+function addDismissedSeed(id){
+  const list = getDismissedSeeds();
+  if(!list.includes(id)){ list.push(id); localStorage.setItem(DISMISSED_KEY, JSON.stringify(list)); }
+}
+
+/* ---------- Moedas ---------- */
+function toIron(c){ if(!c) return 0; return (c.gold||0)*1000000 + (c.silver||0)*10000 + (c.copper||0)*100 + (c.iron||0); }
+function coinParts(n){ return [["g",Math.floor(n/1000000)],["s",Math.floor(n%1000000/10000)],["c",Math.floor(n%10000/100)],["i",Math.floor(n%100)]]; }
+function ironToFormatted(n){ const p = coinParts(n).filter(x=>x[1]>0); return p.length ? p.map(x=>x[1]+x[0]).join(" ") : "0i"; }
+function coins(n){
+  let p = coinParts(n).filter(x=>x[1]>0);
+  if(!p.length) p = [["i",0]];
+  return '<span class="coin">' + p.map(x=>x[1]+'<b class="'+x[0]+'">'+x[0]+'</b>').join("") + '</span>';
+}
+function ironToCoins(n){
+  let rem = Math.max(0, Math.floor(n));
+  const g = Math.floor(rem/1000000); rem %= 1000000;
+  const s = Math.floor(rem/10000); rem %= 10000;
+  const c = Math.floor(rem/100); rem %= 100;
+  return { gold:g, silver:s, copper:c, iron:rem };
+}
+
+/* ---------- Tempo & Cofre Estimado ---------- */
+function calculateExpiry(d){
+  const total = ((d.remainingDays*24 + d.remainingHours)*60 + d.remainingMinutes)*60000;
+  const left = Math.max(0, total - (Date.now() - (d.snapshotTimestamp || Date.now())));
+  return {
+    target: new Date(Date.now()+left),
+    days: Math.floor(left/864e5),
+    hours: Math.floor(left%864e5/36e5),
+    mins: Math.floor(left%36e5/6e4),
+    expired: left<=0
+  };
+}
+const stateOf = days => days < CRIT ? "crit" : days < META ? "warn" : "ok";
+function fmtDateShort(dt){
+  const m = dt.toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+  return dt.getDate()+" "+m+(dt.getFullYear()!==new Date().getFullYear()?" "+dt.getFullYear():"");
+}
+function ago(ts){
+  const m = Math.floor((Date.now()-(ts||Date.now()))/6e4);
+  if(m < 60) return { t: "há poucos min", old: false };
+  if(m < 1440) return { t: "há "+Math.floor(m/60)+"h", old: false };
+  const d = Math.floor(m/1440);
+  return { t: "há "+d+"d"+(d>7?" · conferir":""), old: d>7 };
+}
+function needIron(d,e){ const gap = META - e.days; return gap>0 ? Math.ceil(gap * toIron(d.monthlyCost)/28) : 0; }
+
+function estimatedCoffers(d, e = calculateExpiry(d)){
+  const monthlyIron = toIron(d.monthlyCost);
+  const costPerDay = monthlyIron > 0 ? (monthlyIron / 28) : (10000 / 28);
+  const initialDays = d.remainingDays + (d.remainingHours || 0)/24 + (d.remainingMinutes || 0)/1440;
+  const curDays = e.days + e.hours/24 + e.mins/1440;
+  const elapsedDays = Math.max(0, initialDays - curDays);
+  const spentIron = elapsedDays * costPerDay;
+  return Math.max(0, Math.round(toIron(d.coffers) - spentIron));
+}
+
+/* ---------- Trilha de Horizonte Ultra-Slim ---------- */
+const STOPS = [[0,0],[30,0.35],[90,0.65],[180,0.84],[365,1]];
+function pos(days){
+  if(days>=365) return 1;
+  for(let i=1;i<STOPS.length;i++){
+    const [d0,p0]=STOPS[i-1],[d1,p1]=STOPS[i];
+    if(days<=d1) return p0+(days-d0)/(d1-d0)*(p1-p0);
+  }
+  return 1;
+}
+function renderHorizon(list){
+  const lab = {0:"0d", 30:"30d", 90:"90d", 180:"180d", 365:"365d+"};
+  let h = '<div class="hz-line"></div>';
+  STOPS.forEach(([d,p]) => {
+    const cls = d === 0 ? "hz-tick-start" : d === 365 ? "hz-tick-end" : "";
+    h += `<div class="hz-tick ${cls}" style="left:${p*100}%"><span>${lab[d]}</span></div>`;
+  });
+  h += `<div class="hz-meta" style="left:${pos(META)*100}%"><span>meta ${META}d</span></div>`;
+
+  const sorted = [...list].sort((a,b)=>a.e.days-b.e.days);
+  let lastLabelPos = -1;
+  sorted.forEach((x, idx) => {
+    const st = stateOf(x.e.days);
+    const p = pos(x.e.days);
+    const sel = (drawerOpen && selectedDeedId === x.d.id) ? "selected" : "";
+    const shortName = x.d.name.length > 18 ? x.d.name.slice(0,17)+"…" : x.d.name;
+    const canShow = (idx === 0) || ((idx < 2 || st === "crit") && (p - lastLabelPos >= 0.12));
+    if (canShow) lastLabelPos = p;
+    const ownerInfo = x.d.mayor ? ` · ${esc(x.d.mayor)}` : "";
+    h += `
+      <button class="hz-pin ${st} ${sel}" style="left:${p*100}%" data-id="${esc(x.d.id)}" aria-label="${esc(x.d.name)}">
+        <i></i>
+        ${canShow ? `<em>${esc(shortName)} · ${x.e.days}d</em>` : ''}
+        <span class="hz-tip">${esc(x.d.name)} · <span class="mono">${x.e.days}d ${x.e.hours}h</span>${ownerInfo}</span>
+      </button>
+    `;
+  });
+  $("hz").innerHTML = h;
+}
+
+/* ---------- Render Tabela & Topbar ---------- */
+function renderAll(){
+  const list = deeds.map(d => ({ d, e: calculateExpiry(d) }));
+  const first = [...list].sort((a,b)=>a.e.days-b.e.days)[0];
+  const burn = deeds.reduce((s,d)=>s+toIron(d.monthlyCost),0);
+  const myDeeds = deeds.filter(d => (d.tag || "Minha") === "Minha");
+  const partnerDeeds = deeds.filter(d => d.tag === "Parceiro");
+  const burnMine = myDeeds.reduce((s,d)=>s+toIron(d.monthlyCost),0);
+
+  if (first) {
+    $("summaryMetrics").innerHTML = `
+      <span>Queima: ${coins(burn)}<span style="color:var(--ink-3)">/mês (suas: ${ironToFormatted(burnMine)})</span></span>
+      <span class="divider-v" style="display:inline-block;height:12px;vertical-align:middle"></span>
+      <span>Próx: <strong>${esc(first.d.name)}</strong> <span class="mono" style="color:${first.e.days<CRIT?'var(--crit)':'var(--ink)'}">(${first.e.days}d ${first.e.hours}h)</span></span>
+    `;
+  } else {
+    $("summaryMetrics").textContent = "Nenhuma deed cadastrada";
+  }
+
+  $("thNeed").textContent = `Déficit (${META}d)`;
+  $("fAll").textContent = `Todas (${deeds.length})`;
+  $("fMine").textContent = `Minhas (${myDeeds.length})`;
+  $("fPartner").textContent = `Parceiros (${partnerDeeds.length})`;
+  $("fLow").textContent = `Abaixo da meta (${list.filter(x=>x.e.days<META).length})`;
+  $("footerCount").textContent = `${deeds.length} assentamentos monitorados`;
+
+  renderHorizon(list);
+
+  let rows = list.filter(x => {
+    if(currentFilter === "low") return x.e.days < META;
+    if(currentFilter === "mine") return (x.d.tag || "Minha") === "Minha";
+    if(currentFilter === "partner") return (x.d.tag || "") === "Parceiro";
+    return true;
+  });
+
+  rows.sort((a,b)=>({
+    urgency: () => a.e.days - b.e.days,
+    name: () => a.d.name.localeCompare(b.d.name),
+    coffers: () => estimatedCoffers(b.d, b.e) - estimatedCoffers(a.d, a.e),
+    burn: () => toIron(b.d.monthlyCost) - toIron(a.d.monthlyCost)
+  }[sortKey]()));
+
+  $("rows").innerHTML = rows.length ? rows.map(({d, e}) => {
+    const st = stateOf(e.days);
+    const a = ago(d.snapshotTimestamp);
+    const need = needIron(d, e);
+    const chips = toIron(d.chips);
+    const estCoffer = estimatedCoffers(d, e);
+    const snapCoffer = toIron(d.coffers);
+    const diff = snapCoffer - estCoffer;
+    const isSelected = drawerOpen && selectedDeedId === d.id;
+
+    const tagClass = d.tag === "Parceiro" ? "partner" : d.tag === "Aliança" ? "ally" : "";
+    const tagLabel = d.tag === "Parceiro" && d.mayor ? `Parceiro · ${d.mayor}` : (d.tag || "Minha");
+    const warnRatio = (d.creatureRatio && d.creatureRatio < 15.0)
+      ? `<span class="tag warn-ratio">Pasto ${d.creatureRatio.toFixed(1)}</span>`
+      : '';
+
+    const subText = d.notes
+      ? `<div class="sub-line note">${esc(d.notes)}</div>`
+      : (d.motto && d.motto !== d.name ? `<div class="sub-line">${esc(d.motto)}</div>` : '');
+
+    const meterPct = Math.min(100, Math.round((e.days / META) * 100));
+
+    return `
+      <tr class="${st} ${isSelected ? 'selected' : ''}" data-id="${esc(d.id)}">
+        <td>
+          <div class="cell-deed">
+            <div class="deed-title-row">
+              <span class="dot ${st}"></span>
+              <span class="deed-name">${esc(d.name)}</span>
+              <span class="tag ${tagClass}">${esc(tagLabel)}</span>
+              ${warnRatio}
+            </div>
+            ${subText}
+          </div>
+        </td>
+        <td>
+          <div class="due-main">${e.days}d ${String(e.hours).padStart(2,'0')}h</div>
+          <div class="due-sub ${a.old ? 'stale' : ''}">${fmtDateShort(e.target)} · ${a.t}</div>
+        </td>
+        <td>
+          <div class="meter-wrap">
+            <div class="meter"><i style="width:${meterPct}%"></i></div>
+            <span class="meter-label">${e.days} / ${META}d</span>
+          </div>
+        </td>
+        <td>
+          <div class="coffer-cell">
+            <div>
+              ${coins(estCoffer)}
+              ${diff > 50 ? `<div class="due-sub" title="No último print: ${ironToFormatted(snapCoffer)}">-${ironToFormatted(diff)} consumido</div>` : ''}
+              ${chips > 0 ? `<div class="due-sub">${ironToFormatted(chips)} em chips</div>` : ''}
+            </div>
+            <button class="quick-add" data-act="dep" data-id="${esc(d.id)}" title="Depositar moedas">+</button>
+          </div>
+        </td>
+        <td>${coins(toIron(d.monthlyCost))}</td>
+        <td>${need > 0 ? coins(need) : `<span style="color:var(--ink-3);font-size:12px">${LANG==='en'?'Covered':'Coberta'}</span>`}</td>
+      </tr>
+    `;
+  }).join("") : (deeds.length ? `
+    <tr><td colspan="6" style="text-align:center;padding:48px 16px;color:var(--ink-3)">
+      ${LANG==='en'?'No deeds match this filter.':'Nenhuma deed corresponde a este filtro.'}
+    </td></tr>
+  ` : `
+    <tr><td colspan="6" style="text-align:center;padding:56px 20px">
+      <div style="max-width:440px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="font-size:14px;font-weight:600;color:var(--ink)">${LANG==='en'?'No settlements tracked yet':'Nenhum assentamento cadastrado'}</div>
+        <div style="font-size:12.5px;color:var(--ink-2);line-height:1.5">
+          ${LANG==='en'
+            ? 'Take a screenshot of your Settlement Billboard in Wurm Online and press <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> anywhere, or paste the billboard text.'
+            : 'Recorte o Settlement Billboard no Wurm Online e pressione <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> em qualquer lugar, ou cole o texto manualmente.'}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn primary" id="btnEmptyAdd">+ ${LANG==='en'?'Add Billboard':'Adicionar Billboard'}</button>
+          <button class="btn" id="btnEmptyDemo">${LANG==='en'?'Load sample data':'Testar com exemplo'}</button>
+        </div>
+      </div>
+    </td></tr>
+  `);
+  if ($("btnEmptyAdd")) $("btnEmptyAdd").onclick = () => openDrawer("billboard");
+  if ($("btnEmptyDemo")) $("btnEmptyDemo").onclick = loadDemoDeeds;
+}
+
+/* ---------- Gaveta Lateral (Drawer) ---------- */
+function openDrawer(tab = "overview", deedId = null){
+  if (deedId) selectedDeedId = deedId;
+  if (!selectedDeedId && deeds.length) selectedDeedId = deeds[0].id;
+  activeDrawerTab = tab;
+  drawerOpen = true;
+  $("drawer").classList.add("open");
+  $("drawer").setAttribute("aria-hidden", "false");
+  renderDrawer();
+  renderAll();
+}
+
+function closeDrawer(){
+  drawerOpen = false;
+  $("drawer").classList.remove("open");
+  $("drawer").setAttribute("aria-hidden", "true");
+  renderAll();
+}
+
+function renderDrawer(){
+  if (!drawerOpen) return;
+
+  document.querySelectorAll(".dtab").forEach(b => {
+    b.classList.toggle("active", b.dataset.dtab === activeDrawerTab);
+  });
+
+  const d = deeds.find(x => x.id === selectedDeedId) || deeds[0];
+  if (d) selectedDeedId = d.id;
+
+  if (activeDrawerTab === "planner") {
+    $("drawerTitle").textContent = "Planejador de Upkeep";
+    renderDrawerPlanner();
+    return;
+  }
+  if (activeDrawerTab === "billboard") {
+    $("drawerTitle").textContent = "Ler Settlement Billboard";
+    renderDrawerBillboard();
+    return;
+  }
+  if (!d) {
+    $("drawerTitle").textContent = "Nenhuma deed";
+    $("drawerBody").innerHTML = `<p style="color:var(--ink-3)">Cadastre uma deed colando um print ou texto na aba Billboard.</p>`;
+    return;
+  }
+
+  // Seletor de deed no título da gaveta para trocar rápido
+  const deedOptions = deeds.map(x => `<option value="${esc(x.id)}" ${x.id===d.id?'selected':''}>${esc(x.name)}</option>`).join("");
+  $("drawerTitle").innerHTML = `<select id="drawerDeedSel" class="prop-select" style="font-weight:600;font-size:13.5px;padding:2px 4px">${deedOptions}</select>`;
+  $("drawerDeedSel").onchange = (e) => {
+    selectedDeedId = e.target.value;
+    renderDrawer();
+    renderAll();
+  };
+
+  if (activeDrawerTab === "overview") renderDrawerOverview(d);
+  else if (activeDrawerTab === "deposit") renderDrawerDeposit(d);
+}
+
+function renderDrawerOverview(d){
+  const e = calculateExpiry(d);
+  const estCoffer = estimatedCoffers(d, e);
+  const chips = toIron(d.chips);
+  const faithParts = [
+    d.faith?.raritySeconds ? `Rarity +${d.faith.raritySeconds}s` : null,
+    d.faith?.enchanting ? `Enchanting ${d.faith.enchanting}%` : null,
+    d.faith?.war ? `War ${d.faith.war}%` : null,
+    d.faith?.healing ? `Healing ${d.faith.healing}%` : null
+  ].filter(Boolean).join(" · ") || "Sem bônus";
+
+  const ratioStatus = (d.creatureRatio && d.creatureRatio < 15.0)
+    ? `<span style="color:var(--crit)">${d.creatureRatio} (Superlotado)</span>`
+    : `${d.creatureRatio || "?"} (ideal ≥ 15)`;
+
+  $("drawerBody").innerHTML = `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+        <p style="margin:0;color:var(--ink-2);font-size:12.5px;font-style:italic">${esc(d.motto || "Sem lema registrado")}</p>
+        <button class="btn sm" id="btnExportICS" title="Agendar alerta 15d antes no calendário">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          .ics
+        </button>
+      </div>
+
+      <div class="prop-list">
+        <div class="prop-row">
+          <span class="prop-label">Categoria</span>
+          <select class="prop-select" id="propTag">
+            <option value="Minha" ${(d.tag||"Minha")==="Minha"?"selected":""}>Minha</option>
+            <option value="Parceiro" ${d.tag==="Parceiro"?"selected":""}>Parceiro</option>
+            <option value="Aliança" ${d.tag==="Aliança"?"selected":""}>Aliança</option>
+            <option value="Outro" ${d.tag==="Outro"?"selected":""}>Outro</option>
+          </select>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">Responsável</span>
+          <input type="text" class="prop-input" id="propMayor" value="${esc(d.mayor||"")}" placeholder="Adicionar prefeito...">
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">Anotação</span>
+          <input type="text" class="prop-input" id="propNotes" value="${esc(d.notes||"")}" placeholder="Adicionar nota rápida...">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Especificações</div>
+      <div class="spec-grid">
+        <div class="spec-box">
+          <span>Vencimento</span>
+          <strong class="mono">${e.days}d ${e.hours}h ${e.mins}m</strong>
+        </div>
+        <div class="spec-box">
+          <span>Cofre Estimado</span>
+          <strong>${coins(estCoffer)}</strong>
+        </div>
+        <div class="spec-box">
+          <span>Dimensões</span>
+          <strong class="mono">${esc(d.size || d.width+"x"+d.height)} (${d.tiles || d.width*d.height})</strong>
+        </div>
+        <div class="spec-box">
+          <span>Perímetro / Guardas</span>
+          <strong class="mono">${d.perimeter} / ${d.guards}</strong>
+        </div>
+        <div class="spec-box">
+          <span>Criaturas (${d.brandedCreatures||0} branded)</span>
+          <strong>${ratioStatus}</strong>
+        </div>
+        <div class="spec-box">
+          <span>Regime / Aliança</span>
+          <strong>${esc(d.democracy||"Padrão")}${d.alliance?" · "+esc(d.alliance):""}</strong>
+        </div>
+        <div class="spec-box" style="grid-column:1/-1">
+          <span>Bônus de Fé</span>
+          <strong>${faithParts}</strong>
+        </div>
+        ${chips > 0 ? `<div class="spec-box" style="grid-column:1/-1"><span>Village Upkeep Chips</span><strong>${coins(chips)}</strong></div>` : ''}
+      </div>
+    </div>
+
+    ${d.imageSnapshot ? `
+      <div>
+        <div class="section-title">Último Snapshot</div>
+        <div class="thumb-wrap" onclick="openLightbox('${esc(d.imageSnapshot)}')">
+          <img src="${esc(d.imageSnapshot)}" alt="Print de ${esc(d.name)}">
+        </div>
+      </div>
+    ` : ''}
+
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <button class="btn sm danger" id="btnDelDeed">Remover deed</button>
+      <button class="btn sm primary" onclick="openDrawer('deposit', '${esc(d.id)}')">Depositar moedas</button>
+    </div>
+  `;
+
+  // Auto-save inline das propriedades
+  $("propTag").onchange = (ev) => { d.tag = ev.target.value; saveDeeds(); renderAll(); showToast("Categoria atualizada"); };
+  const saveTextProps = () => {
+    const m = $("propMayor").value.trim();
+    const n = $("propNotes").value.trim();
+    if (m !== (d.mayor||"") || n !== (d.notes||"")) {
+      d.mayor = m; d.notes = n; saveDeeds(); renderAll(); showToast("Salvo");
+    }
+  };
+  $("propMayor").onblur = saveTextProps;
+  $("propNotes").onblur = saveTextProps;
+  $("propMayor").onkeydown = (ev) => { if(ev.key==="Enter") ev.target.blur(); };
+  $("propNotes").onkeydown = (ev) => { if(ev.key==="Enter") ev.target.blur(); };
+
+  $("btnExportICS").onclick = () => exportDeedCalendar(d.id);
+  $("btnDelDeed").onclick = () => {
+    if(confirm(`Remover "${d.name}" do rastreador?`)){
+      addDismissedSeed(d.id);
+      deeds = deeds.filter(x => x.id !== d.id);
+      selectedDeedId = deeds[0]?.id || null;
+      saveDeeds();
+      if (!selectedDeedId) closeDrawer(); else renderDrawer();
+      renderAll();
+      showToast("Deed removida");
+    }
+  };
+}
+
+function renderDrawerDeposit(d){
+  const e = calculateExpiry(d);
+  const estCoffer = estimatedCoffers(d, e);
+
+  $("drawerBody").innerHTML = `
+    <div class="preview-card">
+      <div class="preview-row"><span>Saldo estimado atual</span><strong>${coins(estCoffer)}</strong></div>
+      <div class="preview-row"><span>Custo mensal</span><strong>${coins(toIron(d.monthlyCost))}/mês</strong></div>
+    </div>
+
+    <div class="field-group">
+      <span class="field-label">Atalhos rápidos</span>
+      <div class="chips-row">
+        <button class="chip-btn" data-preset="50c">+50c</button>
+        <button class="chip-btn" data-preset="1s">+1s</button>
+        <button class="chip-btn" data-preset="2s">+2s</button>
+        <button class="chip-btn" data-preset="3s">+3s</button>
+        <button class="chip-btn" data-preset="5s">+5s</button>
+        <button class="chip-btn" data-preset="10s">+10s</button>
+      </div>
+    </div>
+
+    <div class="coin-grid">
+      <div class="coin-field"><label style="color:var(--cg)">Gold</label><input type="number" id="depG" min="0" value="${depositInput.gold}"></div>
+      <div class="coin-field"><label style="color:var(--cs)">Silver</label><input type="number" id="depS" min="0" value="${depositInput.silver}"></div>
+      <div class="coin-field"><label style="color:var(--cc)">Copper</label><input type="number" id="depC" min="0" value="${depositInput.copper}"></div>
+      <div class="coin-field"><label style="color:var(--ci)">Iron</label><input type="number" id="depI" min="0" value="${depositInput.iron}"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="depNote">Observação (opcional)</label>
+      <input type="text" class="input-box" id="depNote" value="${esc(depositInput.note)}" placeholder="Ex: Char principal, rateio...">
+    </div>
+
+    <div class="preview-card" id="depPreviewCard"></div>
+
+    <button class="btn primary" id="btnConfirmDep" style="height:34px;width:100%">Confirmar depósito</button>
+
+    <div>
+      <div class="section-title">Histórico de depósitos</div>
+      <div class="hist-list" id="depHistList"></div>
+    </div>
+  `;
+
+  const updatePreview = () => {
+    depositInput.gold = Math.max(0, parseInt($("depG").value, 10) || 0);
+    depositInput.silver = Math.max(0, parseInt($("depS").value, 10) || 0);
+    depositInput.copper = Math.max(0, parseInt($("depC").value, 10) || 0);
+    depositInput.iron = Math.max(0, parseInt($("depI").value, 10) || 0);
+    depositInput.note = $("depNote").value;
+
+    const addedIron = toIron(depositInput);
+    const monthlyIron = toIron(d.monthlyCost);
+    const costPerDay = monthlyIron > 0 ? (monthlyIron / 28) : (10000 / 28);
+    const addedDays = addedIron > 0 ? (addedIron / costPerDay) : 0;
+    const curLeft = Math.max(0, ((e.days * 24 + e.hours) * 60 + e.mins) * 60000);
+    const newTotalMs = curLeft + addedDays * 864e5;
+    const newTarget = new Date(Date.now() + newTotalMs);
+    const newDays = Math.floor(newTotalMs / 864e5);
+    const newHours = Math.floor((newTotalMs % 864e5) / 36e5);
+
+    const addD = Math.floor(addedDays);
+    const addH = Math.round((addedDays - addD) * 24);
+
+    $("depPreviewCard").innerHTML = `
+      <div class="preview-row"><span>Ganho de prazo</span><strong class="mono" style="color:var(--ok)">+${addD}d ${addH}h (${addedDays.toFixed(1)}d)</strong></div>
+      <div class="preview-row"><span>Novo cofre estimado</span><strong>${coins(estCoffer + addedIron)}</strong></div>
+      <div class="preview-row"><span>Nova expiração</span><strong class="mono">${fmtDateShort(newTarget)} (${newDays}d ${newHours}h)</strong></div>
+    `;
+  };
+
+  document.querySelectorAll("[data-preset]").forEach(btn => {
+    btn.onclick = () => {
+      const p = btn.dataset.preset;
+      $("depG").value = 0; $("depS").value = 0; $("depC").value = 0; $("depI").value = 0;
+      if (p.endsWith("s")) $("depS").value = parseInt(p, 10);
+      if (p.endsWith("c")) $("depC").value = parseInt(p, 10);
+      updatePreview();
+    };
+  });
+
+  ["depG","depS","depC","depI","depNote"].forEach(id => $(id).oninput = updatePreview);
+  updatePreview();
+
+  $("btnConfirmDep").onclick = () => confirmDeposit(d.id);
+
+  // Render histórico
+  const hist = d.depositHistory || [];
+  $("depHistList").innerHTML = hist.length ? hist.map(h => {
+    const depId = h.id || h.timestamp;
+    const amt = h.amountIron ? coins(h.amountIron) : esc(h.amountStr);
+    return `
+      <div class="hist-item">
+        <div>
+          ${amt} <span class="mono" style="color:var(--ok);font-size:11px">+${h.addedDays}d</span>
+          ${h.note ? `<div style="color:var(--ink-3);font-size:11px;margin-top:1px">${esc(h.note)}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <span class="mono" style="color:var(--ink-3);font-size:10.5px">${esc(h.dateStr)}</span>
+          <button class="undo-btn" onclick="undoDeposit('${esc(d.id)}','${esc(depId)}')">desfazer</button>
+        </div>
+      </div>
+    `;
+  }).join("") : `<span style="font-size:12px;color:var(--ink-3)">Nenhum depósito manual registrado.</span>`;
+}
+
+function renderDrawerPlanner(){
+  $("drawerBody").innerHTML = `
+    <div class="pills" style="background:var(--bg);padding:3px;border-radius:6px;border:1px solid var(--border)">
+      <button class="pill" style="flex:1" id="pTabBudget" aria-pressed="${plannerSubTab==='budget'}">Distribuir Orçamento</button>
+      <button class="pill" style="flex:1" id="pTabMeta" aria-pressed="${plannerSubTab==='meta'}">Meta de Dias</button>
+    </div>
+
+    <div id="plannerContent"></div>
+  `;
+
+  $("pTabBudget").onclick = () => { plannerSubTab = "budget"; renderDrawerPlanner(); };
+  $("pTabMeta").onclick = () => { plannerSubTab = "meta"; renderDrawerPlanner(); };
+
+  if (plannerSubTab === "meta") {
+    let total = 0;
+    const rowsHtml = deeds.map(d => {
+      const e = calculateExpiry(d);
+      const n = needIron(d, e);
+      total += n;
+      return `
+        <div class="plan-row">
+          <div>
+            <span>${esc(d.name)}</span>
+            <small class="mono">${e.days}d atuais ${n > 0 ? `· faltam ${META - e.days}d` : '· já cobre'}</small>
+          </div>
+          <div>${n > 0 ? coins(n) : '<span style="color:var(--ink-3);font-size:11.5px">OK</span>'}</div>
+        </div>
+      `;
+    }).join("");
+
+    $("plannerContent").innerHTML = `
+      <div class="field-group" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between">
+          <span class="field-label">Meta de cobertura global</span>
+          <strong class="mono" id="metaOut">${META} dias</strong>
+        </div>
+        <input type="range" id="metaRange" min="30" max="365" step="15" value="${META}">
+      </div>
+      <div>${rowsHtml}</div>
+      <div class="preview-card" style="margin-top:12px">
+        <div class="preview-row"><span>Total necessário</span><strong>${coins(total)}</strong></div>
+      </div>
+    `;
+
+    $("metaRange").oninput = (ev) => {
+      META = +ev.target.value;
+      localStorage.setItem(META_KEY, META);
+      renderAll();
+      renderDrawerPlanner();
+    };
+  } else {
+    $("plannerContent").innerHTML = `
+      <div class="field-group" style="margin-bottom:10px">
+        <span class="field-label">Orçamento disponível (atalhos)</span>
+        <div class="chips-row">
+          <button class="chip-btn" data-bpreset="1s">1s</button>
+          <button class="chip-btn" data-bpreset="2s">2s</button>
+          <button class="chip-btn" data-bpreset="5s">5s</button>
+          <button class="chip-btn" data-bpreset="10s">10s</button>
+          <button class="chip-btn" data-bpreset="20s">20s</button>
+        </div>
+      </div>
+      <div class="coin-grid" style="margin-bottom:12px">
+        <div class="coin-field"><label style="color:var(--cg)">Gold</label><input type="number" id="bgtG" min="0" value="${budgetCoins.gold}"></div>
+        <div class="coin-field"><label style="color:var(--cs)">Silver</label><input type="number" id="bgtS" min="0" value="${budgetCoins.silver}"></div>
+        <div class="coin-field"><label style="color:var(--cc)">Copper</label><input type="number" id="bgtC" min="0" value="${budgetCoins.copper}"></div>
+        <div class="coin-field"><label style="color:var(--ci)">Iron</label><input type="number" id="bgtI" min="0" value="${budgetCoins.iron}"></div>
+      </div>
+      <div class="preview-card" id="bgtSummary" style="margin-bottom:10px"></div>
+      <div id="bgtRows"></div>
+      <button class="btn primary" id="btnApplyBudget" style="width:100%;height:34px;margin-top:14px">Aplicar distribuição sugerida</button>
+    `;
+
+    const refreshBudget = () => {
+      budgetCoins.gold = Math.max(0, parseInt($("bgtG").value, 10) || 0);
+      budgetCoins.silver = Math.max(0, parseInt($("bgtS").value, 10) || 0);
+      budgetCoins.copper = Math.max(0, parseInt($("bgtC").value, 10) || 0);
+      budgetCoins.iron = Math.max(0, parseInt($("bgtI").value, 10) || 0);
+
+      const budgetIron = toIron(budgetCoins);
+      const res = optimizeBudget(budgetIron);
+      lastOptimizedPlan = res.items;
+
+      if (!deeds.length || budgetIron <= 0) {
+        $("bgtSummary").innerHTML = `<span style="color:var(--ink-3)">Informe um valor acima de 0 para simular.</span>`;
+        $("bgtRows").innerHTML = "";
+        $("btnApplyBudget").disabled = true;
+        return;
+      }
+
+      $("btnApplyBudget").disabled = false;
+      $("bgtSummary").innerHTML = `
+        <div class="preview-row"><span>Menor prazo atual</span><strong class="mono" style="color:var(--crit)">${Math.floor(res.minBefore)}d</strong></div>
+        <div class="preview-row"><span>Menor prazo após divisão</span><strong class="mono" style="color:var(--ok)">${Math.floor(res.minAfter)}d</strong></div>
+      `;
+
+      $("bgtRows").innerHTML = res.items.map(it => {
+        const addD = (it.targetDays - it.curDays).toFixed(1);
+        return `
+          <div class="plan-row">
+            <div>
+              <span>${esc(it.name)}</span>
+              <small class="mono">${Math.floor(it.curDays)}d → ${Math.floor(it.targetDays)}d (+${addD}d)</small>
+            </div>
+            <div>${it.addedIron > 0 ? coins(it.addedIron) : '<span style="color:var(--ink-3);font-size:11.5px">0</span>'}</div>
+          </div>
+        `;
+      }).join("");
+    };
+
+    document.querySelectorAll("[data-bpreset]").forEach(btn => {
+      btn.onclick = () => {
+        $("bgtG").value = 0; $("bgtS").value = parseInt(btn.dataset.bpreset, 10); $("bgtC").value = 0; $("bgtI").value = 0;
+        refreshBudget();
+      };
+    });
+    ["bgtG","bgtS","bgtC","bgtI"].forEach(id => $(id).oninput = refreshBudget);
+    $("btnApplyBudget").onclick = applyBudgetDeposits;
+    refreshBudget();
+  }
+}
+
+function renderDrawerBillboard(){
+  $("drawerBody").innerHTML = `
+    <p style="margin:0;color:var(--ink-2);font-size:12.5px">
+      Você pode pressionar <span class="kbd" style="background:var(--bg);border-color:var(--border);color:var(--ink)">Ctrl+V</span> em qualquer lugar da página com um print ou arrastar o arquivo, ou colar o texto manualmente abaixo.
+    </p>
+    <div class="field-group">
+      <label class="field-label" for="rawText">Texto do Settlement Billboard</label>
+      <textarea class="input-box" id="rawText" placeholder="The size of Freedom Homestead is 21 by 41..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <label class="btn" style="flex:1">
+        Enviar imagem (OCR)
+        <input type="file" id="drawerFileInput" accept="image/*" hidden>
+      </label>
+      <button class="btn primary" id="btnParseManual" style="flex:1">Processar texto</button>
+    </div>
+  `;
+
+  $("btnParseManual").onclick = () => {
+    const p = parseBillboardText($("rawText").value);
+    if (p && p.name) {
+      upsertDeed(p);
+      openDrawer("overview", p.id);
+    } else {
+      showToast("Não encontrei os dados de uma deed nesse texto.");
+    }
+  };
+  $("drawerFileInput").onchange = (e) => {
+    if (e.target.files[0]) {
+      processImageFile(e.target.files[0]);
+      e.target.value = "";
+    }
+  };
+}
+
+function openLightbox(src){
+  $("lightboxImg").src = src;
+  $("lightbox").showModal();
+}
+
+/* ---------- Dados & Inicialização ---------- */
+function saveDeeds(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(deeds)); }
+
+function init(){
+  const activeSeeds = getActiveSeeds();
+  try { deeds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; } catch(e){ deeds = null; }
+  if(!Array.isArray(deeds)){ deeds = JSON.parse(JSON.stringify(activeSeeds)); saveDeeds(); }
+
+  const dismissed = getDismissedSeeds();
+  let needsSave = false;
+  activeSeeds.forEach(seed => {
+    if (!dismissed.includes(seed.id) && !deeds.some(d => d.id === seed.id || d.name.toLowerCase() === seed.name.toLowerCase())) {
+      deeds.push(JSON.parse(JSON.stringify(seed)));
+      needsSave = true;
+    }
+  });
+  deeds.forEach(d => {
+    if(!d.tag) { d.tag = "Minha"; needsSave = true; }
+  });
+  if (needsSave) saveDeeds();
+
+  applyLangLabels();
+  bind();
+  renderAll();
+  setInterval(() => { renderAll(); if(drawerOpen && activeDrawerTab==="overview") renderDrawer(); }, 60000);
+}
+
+function loadDemoDeeds(){
+  if (deeds.length && !confirm(LANG==="en" ? "Replace current list with 3 sample deeds?" : "Substituir a lista atual por 3 deeds de exemplo?")) return;
+  deeds = JSON.parse(JSON.stringify(DEMO_DEEDS));
+  selectedDeedId = deeds[0]?.id || null;
+  saveDeeds();
+  renderAll();
+  if(drawerOpen) renderDrawer();
+  showToast(LANG==="en" ? "Sample data loaded" : "Exemplo carregado");
+}
+
+function resetToInitialSeed(){
+  const activeSeeds = getActiveSeeds();
+  const msg = activeSeeds.length
+    ? (LANG==="en" ? "Restore your local seed deeds? Current browser edits will be replaced." : "Restaurar as deeds da sua pasta local (meus_dados)? Os dados atuais do navegador serão substituídos.")
+    : (LANG==="en" ? "Clear all deeds and reset to empty state?" : "Limpar todas as deeds cadastradas e voltar ao estado inicial vazio?");
+  if(confirm(msg)){
+    localStorage.removeItem(DISMISSED_KEY);
+    deeds = JSON.parse(JSON.stringify(activeSeeds));
+    selectedDeedId = deeds[0]?.id || null;
+    saveDeeds();
+    renderAll();
+    if(drawerOpen) renderDrawer();
+    showToast(activeSeeds.length ? "Seeds locais restauradas" : "Dados limpos");
+  }
+}
+
+function setMetaDays(){
+  const val = prompt(LANG==="en" ? "Target upkeep horizon (days):" : "Meta de dias no horizonte:", String(META));
+  if (val === null) return;
+  const n = parseInt(val, 10);
+  if (!isFinite(n) || n < 7 || n > 1095) {
+    showToast(LANG==="en" ? "Enter a number between 7 and 1095" : "Informe um número entre 7 e 1095");
+    return;
+  }
+  META = n;
+  localStorage.setItem(META_KEY, String(META));
+  renderAll();
+  if (drawerOpen) renderDrawer();
+  showToast((LANG==="en" ? "Target updated: " : "Meta atualizada: ") + META + "d");
+}
+
+function applyLangLabels(){
+  const en = LANG === "en";
+  if ($("lblMenuLang")) $("lblMenuLang").textContent = en ? "Idioma: PT" : "Language: EN";
+  if ($("lblMenuMeta")) $("lblMenuMeta").textContent = (en ? "Target horizon" : "Alterar meta") + ` (${META}d)`;
+  const hzLbl = document.querySelector(".hz-label");
+  if (hzLbl) hzLbl.textContent = en ? "Horizon" : "Horizonte";
+  const ths = document.querySelectorAll("thead th");
+  if (ths.length >= 6) {
+    ths[0].querySelector("button").textContent = en ? "Settlement" : "Assentamento";
+    ths[1].querySelector("button").textContent = en ? "Upkeep left" : "Vencimento";
+    ths[2].textContent = en ? "Coverage" : "Cobertura";
+    ths[3].querySelector("button").textContent = en ? "Est. Coffers" : "Cofre estimado";
+    ths[4].querySelector("button").textContent = en ? "Cost / month" : "Custo / mês";
+  }
+}
+
+function toggleLang(){
+  LANG = LANG === "pt" ? "en" : "pt";
+  localStorage.setItem(LANG_KEY, LANG);
+  applyLangLabels();
+  renderAll();
+  if (drawerOpen) renderDrawer();
+  showToast(LANG === "en" ? "Language: English" : "Idioma: Português");
+}
+
+/* ---------- Leitura e Compactação de Imagem ---------- */
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressDataUrl(dataUrl, maxWidth = 900, quality = 0.72) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width, height = img.height;
+      if(width > maxWidth){
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+/* ---------- Parser de Billboard ---------- */
+function parseBillboardText(rawText) {
+  if (!rawText || rawText.trim().length === 0) return null;
+
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const full = rawText.replace(/\r?\n/g, ' ');
+
+  const deed = {
+    id: "",
+    name: "",
+    motto: "",
+    size: "",
+    width: null,
+    height: null,
+    tiles: null,
+    perimeter: null,
+    guards: null,
+    coffers: null,
+    chips: null,
+    monthlyCost: null,
+    rawMonthlyCostStr: "",
+    remainingDays: null,
+    remainingHours: null,
+    remainingMinutes: null,
+    creatureRatio: null,
+    brandedCreatures: null,
+    faith: { war: null, healing: null, enchanting: null, raritySeconds: null },
+    democracy: "",
+    alliance: "",
+    capital: "",
+    mayor: "",
+    productivityBonus: "",
+    snapshotTimestamp: Date.now()
+  };
+
+  const sizeMatch = full.match(/The size of (.+?) is (\d+) by (\d+)/i);
+  if (sizeMatch) {
+    deed.name = sizeMatch[1].trim();
+    deed.width = parseInt(sizeMatch[2], 10);
+    deed.height = parseInt(sizeMatch[3], 10);
+    deed.size = `${deed.width} by ${deed.height}`;
+    deed.tiles = deed.width * deed.height;
+  } else if (lines.length > 0) {
+    deed.name = lines[0];
+  }
+
+  if (!deed.name) return null;
+  deed.id = deed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  if (lines.length > 1 && !lines[1].toLowerCase().startsWith("the size") && !lines[1].toLowerCase().startsWith("settlement billboard")) {
+    deed.motto = lines[1];
+  }
+
+  const perimMatch = full.match(/The perimeter is (\d+)(?: and it has (\d+) guards hired)?/i);
+  if (perimMatch) {
+    deed.perimeter = parseInt(perimMatch[1], 10);
+    if (perimMatch[2] !== undefined) deed.guards = parseInt(perimMatch[2], 10);
+  }
+
+  function extractCoins(textSegment) {
+    const coins = { gold: 0, silver: 0, copper: 0, iron: 0 };
+    const g = textSegment.match(/(\d+)\s*gold/i);
+    const s = textSegment.match(/(\d+)\s*silver/i);
+    const c = textSegment.match(/(\d+)\s*copper/i);
+    const i = textSegment.match(/(\d+)\s*iron/i);
+    if (g) coins.gold = parseInt(g[1], 10);
+    if (s) coins.silver = parseInt(s[1], 10);
+    if (c) coins.copper = parseInt(c[1], 10);
+    if (i) coins.iron = parseInt(i[1], 10);
+    return coins;
+  }
+
+  const coffersMatch = full.match(/The settlement has (.+?) in its coffers/i);
+  if (coffersMatch) deed.coffers = extractCoins(coffersMatch[1]);
+
+  const chipsMatch = full.match(/(.+?) of this amount is in the form of village upkeep chips/i);
+  if (chipsMatch) deed.chips = extractCoins(chipsMatch[1]);
+
+  const costMatch = full.match(/The monthly cost is ([^\.]+)\./i);
+  if (costMatch) {
+    deed.rawMonthlyCostStr = costMatch[1].trim();
+    deed.monthlyCost = extractCoins(costMatch[1]);
+  }
+
+  const upkeepMatch = full.match(/The upkeep will last approximately ([^\.]+?) more/i);
+  if (upkeepMatch) {
+    const uText = upkeepMatch[1];
+    const days = uText.match(/(\d+)\s*days?/i);
+    const hours = uText.match(/(\d+)\s*hours?/i);
+    const mins = uText.match(/(\d+)\s*minutes?/i);
+    deed.remainingDays = days ? parseInt(days[1], 10) : 0;
+    deed.remainingHours = hours ? parseInt(hours[1], 10) : 0;
+    deed.remainingMinutes = mins ? parseInt(mins[1], 10) : 0;
+  }
+
+  const ratioMatch = full.match(/The tile per creature ratio of this deed is ([\d\.]+)/i);
+  if (ratioMatch) deed.creatureRatio = parseFloat(ratioMatch[1]);
+
+  const brandedMatch = full.match(/There are (\d+) creatures currently branded/i);
+  if (brandedMatch) deed.brandedCreatures = parseInt(brandedMatch[1], 10);
+
+  const warMatch = full.match(/War\s*\([^\)]*\)\s*damage:\s*([\d\.]+)%/i);
+  if (warMatch) deed.faith.war = parseFloat(warMatch[1]);
+
+  const healMatch = full.match(/Healing\s*\([^\)]*\)[^:]*:\s*([\d\.]+)%/i);
+  if (healMatch) deed.faith.healing = parseFloat(healMatch[1]);
+
+  const enchMatch = full.match(/Enchanting\s*\([^\)]*\):\s*([\d\.]+)%/i);
+  if (enchMatch) deed.faith.enchanting = parseFloat(enchMatch[1]);
+
+  const rarityMatch = full.match(/Rarity window:\s*(\d+)\s*bonus seconds/i);
+  if (rarityMatch) deed.faith.raritySeconds = parseInt(rarityMatch[1], 10);
+
+  if (/is a non-democracy/i.test(full)) deed.democracy = "Non-democracy";
+  else if (/is a democracy/i.test(full)) deed.democracy = "Democracy";
+
+  const allyMatch = full.match(/We are in the (.+?)\. The capital is ([^\.]+)\./i);
+  if (allyMatch) {
+    deed.alliance = allyMatch[1].trim();
+    deed.capital = allyMatch[2].trim();
+  }
+
+  const mayorMatch = full.match(/([^\n,]+),\s*mayor,\s*(.+)/i);
+  if (mayorMatch) deed.mayor = mayorMatch[1].trim();
+
+  const prodMatch = full.match(/productivity bonus of\s*([\d\.]+%)/i);
+  if (prodMatch) deed.productivityBonus = prodMatch[1];
+
+  return deed;
+}
+
+/* ---------- Merge Seguro ---------- */
+function upsertDeed(parsedDeed, base64Image = "") {
+  const existingIndex = deeds.findIndex(d => d.id === parsedDeed.id || d.name.toLowerCase() === parsedDeed.name.toLowerCase());
+  const pick = (val, fallback) => (val !== null && val !== undefined && val !== "") ? val : fallback;
+
+  if (existingIndex >= 0) {
+    const existing = deeds[existingIndex];
+    const mergedFaith = { ...(existing.faith || { war: 0, healing: 0, enchanting: 0, raritySeconds: 0 }) };
+    if (parsedDeed.faith) {
+      if (parsedDeed.faith.war !== null) mergedFaith.war = parsedDeed.faith.war;
+      if (parsedDeed.faith.healing !== null) mergedFaith.healing = parsedDeed.faith.healing;
+      if (parsedDeed.faith.enchanting !== null) mergedFaith.enchanting = parsedDeed.faith.enchanting;
+      if (parsedDeed.faith.raritySeconds !== null) mergedFaith.raritySeconds = parsedDeed.faith.raritySeconds;
+    }
+
+    deeds[existingIndex] = {
+      ...existing,
+      name: pick(parsedDeed.name, existing.name),
+      motto: pick(parsedDeed.motto, existing.motto),
+      size: pick(parsedDeed.size, existing.size),
+      width: pick(parsedDeed.width, existing.width),
+      height: pick(parsedDeed.height, existing.height),
+      tiles: pick(parsedDeed.tiles, existing.tiles),
+      perimeter: pick(parsedDeed.perimeter, existing.perimeter),
+      guards: pick(parsedDeed.guards, existing.guards),
+      coffers: parsedDeed.coffers || existing.coffers,
+      chips: parsedDeed.chips || existing.chips,
+      monthlyCost: parsedDeed.monthlyCost || existing.monthlyCost,
+      rawMonthlyCostStr: pick(parsedDeed.rawMonthlyCostStr, existing.rawMonthlyCostStr),
+      remainingDays: pick(parsedDeed.remainingDays, existing.remainingDays),
+      remainingHours: pick(parsedDeed.remainingHours, existing.remainingHours),
+      remainingMinutes: pick(parsedDeed.remainingMinutes, existing.remainingMinutes),
+      creatureRatio: pick(parsedDeed.creatureRatio, existing.creatureRatio),
+      brandedCreatures: pick(parsedDeed.brandedCreatures, existing.brandedCreatures),
+      faith: mergedFaith,
+      democracy: pick(parsedDeed.democracy, existing.democracy),
+      alliance: pick(parsedDeed.alliance, existing.alliance),
+      capital: pick(parsedDeed.capital, existing.capital),
+      mayor: pick(parsedDeed.mayor, existing.mayor),
+      productivityBonus: pick(parsedDeed.productivityBonus, existing.productivityBonus),
+      tag: existing.tag || "Minha",
+      notes: existing.notes || "",
+      snapshotTimestamp: Date.now(),
+      imageSnapshot: base64Image || existing.imageSnapshot
+    };
+    selectedDeedId = existing.id;
+    showToast(`"${existing.name}" atualizada`);
+  } else {
+    const newDeed = {
+      ...parsedDeed,
+      width: parsedDeed.width ?? 0,
+      height: parsedDeed.height ?? 0,
+      tiles: parsedDeed.tiles ?? 0,
+      perimeter: parsedDeed.perimeter ?? 5,
+      guards: parsedDeed.guards ?? 0,
+      coffers: parsedDeed.coffers || { gold: 0, silver: 0, copper: 0, iron: 0 },
+      chips: parsedDeed.chips || { gold: 0, silver: 0, copper: 0, iron: 0 },
+      monthlyCost: parsedDeed.monthlyCost || { gold: 0, silver: 0, copper: 0, iron: 0 },
+      remainingDays: parsedDeed.remainingDays ?? 0,
+      remainingHours: parsedDeed.remainingHours ?? 0,
+      remainingMinutes: parsedDeed.remainingMinutes ?? 0,
+      creatureRatio: parsedDeed.creatureRatio ?? 0,
+      brandedCreatures: parsedDeed.brandedCreatures ?? 0,
+      faith: {
+        war: parsedDeed.faith?.war ?? 0,
+        healing: parsedDeed.faith?.healing ?? 0,
+        enchanting: parsedDeed.faith?.enchanting ?? 0,
+        raritySeconds: parsedDeed.faith?.raritySeconds ?? 0
+      },
+      tag: "Minha",
+      notes: "",
+      imageSnapshot: base64Image || ""
+    };
+    deeds.push(newDeed);
+    selectedDeedId = newDeed.id;
+    showToast(`"${newDeed.name}" cadastrada`);
+  }
+
+  saveDeeds();
+  renderAll();
+  if (drawerOpen) renderDrawer();
+}
+
+/* ---------- OCR ---------- */
+async function processImageFile(file){
+  if(!file || !file.type.startsWith("image/")){ showToast("Selecione um arquivo de imagem"); return; }
+  const st = $("ocr");
+  if(typeof Tesseract === "undefined"){
+    showToast("OCR requer internet; cole o texto na aba Billboard");
+    openDrawer("billboard");
+    return;
+  }
+  st.textContent = "Lendo print…";
+  try {
+    const originalDataUrl = await readFileAsDataURL(file);
+    const { data:{ text } } = await Tesseract.recognize(originalDataUrl, "eng", {
+      logger: m => { if(m.status==="recognizing text") st.textContent = "OCR "+Math.round(m.progress*100)+"%"; }
+    });
+    st.textContent = "";
+    const compressedThumb = await compressDataUrl(originalDataUrl);
+    const parsed = parseBillboardText(text);
+    if(parsed && parsed.name) {
+      upsertDeed(parsed, compressedThumb);
+      openDrawer("overview", selectedDeedId);
+    } else {
+      openDrawer("billboard");
+      $("rawText").value = text;
+      showToast("Revise o texto extraído na gaveta");
+    }
+  } catch(err){
+    console.error(err);
+    st.textContent = "";
+    showToast("Falha no OCR; cole o texto manualmente");
+  }
+}
+
+/* ---------- Calendário .ics ---------- */
+function exportDeedCalendar(id){
+  const d = deeds.find(x=>x.id===id); if(!d) return;
+  const e = calculateExpiry(d);
+  const alertDate = new Date(e.target.getTime() - (15 * 864e5));
+  const eventStart = alertDate > new Date() ? alertDate : new Date();
+  const eventEnd = new Date(eventStart.getTime() + (3600 * 1000));
+  const daysAtAlert = Math.max(0, Math.min(e.days, 15));
+
+  const pad = n => String(n).padStart(2, '0');
+  const fmtICS = dt => dt.getUTCFullYear() + pad(dt.getUTCMonth()+1) + pad(dt.getUTCDate()) + 'T' + pad(dt.getUTCHours()) + pad(dt.getUTCMinutes()) + pad(dt.getUTCSeconds()) + 'Z';
+
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wurm Deed Horizon//PT-BR','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+    `UID:deed-${d.id}-${Date.now()}@wurmdeedhorizon`,
+    `DTSTAMP:${fmtICS(new Date())}`,`DTSTART:${fmtICS(eventStart)}`,`DTEND:${fmtICS(eventEnd)}`,
+    `SUMMARY:Upkeep critico: Deed ${d.name} (${daysAtAlert} dias restantes)`,
+    `DESCRIPTION:A deed ${d.name} esta proxima do vencimento.\\nVencimento previsto: ${e.target.toLocaleString('pt-BR')}\\nCusto mensal: ${ironToFormatted(toIron(d.monthlyCost))}`,
+    'STATUS:CONFIRMED','BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY','DESCRIPTION:Lembrete de Upkeep','END:VALARM','END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Alerta_Upkeep_${d.id}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast(`Lembrete .ics exportado`);
+}
+
+/* ---------- Depósitos, Otimizador & Desfazer ---------- */
+function confirmDeposit(deedId){
+  const d = deeds.find(x => x.id === deedId);
+  if(!d) return;
+  const addedIron = toIron(depositInput);
+  if(addedIron <= 0){ showToast("Informe uma quantia maior que zero"); return; }
+
+  const e = calculateExpiry(d);
+  const curCofferIron = estimatedCoffers(d, e);
+  const prevCoffers = { ...d.coffers };
+  const prevRemainingDays = d.remainingDays;
+  const prevRemainingHours = d.remainingHours;
+  const prevRemainingMinutes = d.remainingMinutes;
+  const prevSnapshotTimestamp = d.snapshotTimestamp;
+
+  const monthlyIron = toIron(d.monthlyCost);
+  const costPerDay = monthlyIron > 0 ? (monthlyIron / 28) : (10000 / 28);
+  const addedDays = addedIron / costPerDay;
+  const curLeft = Math.max(0, ((e.days * 24 + e.hours) * 60 + e.mins) * 60000);
+  const newTotalMs = curLeft + addedDays * 864e5;
+
+  d.coffers = ironToCoins(curCofferIron + addedIron);
+  d.remainingDays = Math.floor(newTotalMs / 864e5);
+  d.remainingHours = Math.floor((newTotalMs % 864e5) / 36e5);
+  d.remainingMinutes = Math.floor((newTotalMs % 36e5) / 60000);
+  d.snapshotTimestamp = Date.now();
+
+  d.depositHistory = d.depositHistory || [];
+  d.depositHistory.unshift({
+    id: "dep_" + Date.now(),
+    timestamp: Date.now(),
+    dateStr: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    amountIron: addedIron,
+    amountStr: ironToFormatted(addedIron),
+    addedDays: addedDays.toFixed(1),
+    note: depositInput.note.trim(),
+    prevCoffers, prevRemainingDays, prevRemainingHours, prevRemainingMinutes, prevSnapshotTimestamp
+  });
+
+  depositInput.note = "";
+  saveDeeds();
+  renderAll();
+  renderDrawer();
+  showToast(`+${ironToFormatted(addedIron)} em ${d.name} (+${addedDays.toFixed(1)}d)`);
+}
+
+function undoDeposit(deedId, depId){
+  const d = deeds.find(x => x.id === deedId);
+  if (!d || !d.depositHistory) return;
+  const idx = d.depositHistory.findIndex(h => (h.id || String(h.timestamp)) === String(depId));
+  if (idx < 0) return;
+  const dep = d.depositHistory[idx];
+  const amountStr = dep.amountStr || ironToFormatted(dep.amountIron);
+  if (!confirm(`Desfazer depósito de ${amountStr} em "${d.name}"?`)) return;
+
+  if (dep.prevCoffers) {
+    d.coffers = dep.prevCoffers;
+    d.remainingDays = dep.prevRemainingDays;
+    d.remainingHours = dep.prevRemainingHours;
+    d.remainingMinutes = dep.prevRemainingMinutes;
+    d.snapshotTimestamp = dep.prevSnapshotTimestamp || Date.now();
+  } else {
+    const e = calculateExpiry(d);
+    const curIron = estimatedCoffers(d, e);
+    d.coffers = ironToCoins(Math.max(0, curIron - (dep.amountIron || 0)));
+    const monthlyIron = toIron(d.monthlyCost);
+    const costPerDay = monthlyIron > 0 ? (monthlyIron / 28) : (10000 / 28);
+    const subDays = (dep.amountIron || 0) / costPerDay;
+    const curLeft = Math.max(0, ((e.days * 24 + e.hours) * 60 + e.mins) * 60000);
+    const newTotalMs = Math.max(0, curLeft - subDays * 864e5);
+    d.remainingDays = Math.floor(newTotalMs / 864e5);
+    d.remainingHours = Math.floor((newTotalMs % 864e5) / 36e5);
+    d.remainingMinutes = Math.floor((newTotalMs % 36e5) / 60000);
+    d.snapshotTimestamp = Date.now();
+  }
+
+  d.depositHistory.splice(idx, 1);
+  saveDeeds();
+  renderAll();
+  renderDrawer();
+  showToast("Depósito estornado");
+}
+
+let lastOptimizedPlan = [];
+function optimizeBudget(budgetIron){
+  if (budgetIron <= 0 || !deeds.length) return { items: [], minBefore: 0, minAfter: 0 };
+  const items = deeds.map(d => {
+    const e = calculateExpiry(d);
+    const costPerDay = Math.max(1, toIron(d.monthlyCost) / 28);
+    const curDays = e.days + e.hours / 24;
+    return { deed: d, id: d.id, name: d.name, curDays, costPerDay, addedIron: 0, targetDays: curDays };
+  });
+  const minBefore = Math.min(...items.map(x => x.curDays));
+  let remaining = budgetIron;
+
+  while (remaining > 20) {
+    items.sort((a, b) => a.targetDays - b.targetDays);
+    const lowest = items[0];
+    const secondLowest = items.length > 1 ? items[1].targetDays : lowest.targetDays + 30;
+    const diff = Math.max(0.05, secondLowest - lowest.targetDays);
+    let needed = Math.ceil(diff * lowest.costPerDay);
+    if (needed > remaining) needed = remaining;
+    if (needed <= 0) break;
+    lowest.addedIron += needed;
+    lowest.targetDays += needed / lowest.costPerDay;
+    remaining -= needed;
+  }
+  if (remaining > 0) {
+    items.sort((a, b) => a.targetDays - b.targetDays);
+    items[0].addedIron += remaining;
+    items[0].targetDays += remaining / items[0].costPerDay;
+  }
+  const minAfter = Math.min(...items.map(x => x.targetDays));
+  return { items, minBefore, minAfter };
+}
+
+function applyBudgetDeposits(){
+  const budgetIron = toIron(budgetCoins);
+  const toApply = lastOptimizedPlan.filter(x => x.addedIron > 0);
+  if(!toApply.length){ showToast("Nenhuma deed precisa de moedas"); return; }
+  if(!confirm(`Aplicar ${ironToFormatted(budgetIron)} distribuídos entre ${toApply.length} deeds?`)) return;
+
+  toApply.forEach(it => {
+    const d = deeds.find(x => x.id === it.id);
+    if(!d) return;
+    const e = calculateExpiry(d);
+    const addedIron = it.addedIron;
+    const addedDays = addedIron / it.costPerDay;
+    const curLeft = Math.max(0, ((e.days * 24 + e.hours) * 60 + e.mins) * 60000);
+    const newTotalMs = curLeft + addedDays * 864e5;
+
+    d.depositHistory = d.depositHistory || [];
+    d.depositHistory.unshift({
+      id: "dep_" + Date.now() + "_" + Math.random().toString(36).substr(2,4),
+      timestamp: Date.now(),
+      dateStr: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+      amountIron: addedIron,
+      amountStr: ironToFormatted(addedIron),
+      addedDays: addedDays.toFixed(1),
+      note: "Otimizador de Orçamento",
+      prevCoffers: { ...d.coffers },
+      prevRemainingDays: d.remainingDays,
+      prevRemainingHours: d.remainingHours,
+      prevRemainingMinutes: d.remainingMinutes,
+      prevSnapshotTimestamp: d.snapshotTimestamp
+    });
+
+    d.coffers = ironToCoins(estimatedCoffers(d, e) + addedIron);
+    d.remainingDays = Math.floor(newTotalMs / 864e5);
+    d.remainingHours = Math.floor((newTotalMs % 864e5) / 36e5);
+    d.remainingMinutes = Math.floor((newTotalMs % 36e5) / 60000);
+    d.snapshotTimestamp = Date.now();
+  });
+
+  saveDeeds();
+  renderAll();
+  renderDrawer();
+  showToast(`Distribuição aplicada em ${toApply.length} deeds`);
+}
+
+function showToast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(showToast.t);
+  showToast.t = setTimeout(() => t.classList.remove("on"), 3200);
+}
+
+/* ---------- Eventos ---------- */
+function bind(){
+  $("btnCloseDrawer").onclick = closeDrawer;
+  $("btnCalc").onclick = () => openDrawer("planner");
+  $("btnDeposit").onclick = () => openDrawer("deposit");
+  $("btnPaste").onclick = () => openDrawer("billboard");
+
+  document.querySelectorAll(".dtab").forEach(b => {
+    b.onclick = () => { activeDrawerTab = b.dataset.dtab; renderDrawer(); };
+  });
+
+  // Menu dropdown
+  $("btnMenu").onclick = (e) => { e.stopPropagation(); $("sysMenu").classList.toggle("open"); };
+  window.addEventListener("click", () => $("sysMenu").classList.remove("open"));
+  $("btnMeta").onclick = setMetaDays;
+  $("btnLang").onclick = toggleLang;
+  $("btnExport").onclick = exportData;
+  $("btnExportSeed").onclick = exportLocalSeedFile;
+  $("btnDemo").onclick = loadDemoDeeds;
+  $("btnSeed").onclick = resetToInitialSeed;
+  $("importFile").onchange = importData;
+
+  // Tabela & Trilha
+  $("rows").onclick = (e) => {
+    const depBtn = e.target.closest("[data-act='dep']");
+    if (depBtn) { e.stopPropagation(); openDrawer("deposit", depBtn.dataset.id); return; }
+    const tr = e.target.closest("tr[data-id]");
+    if (tr) openDrawer("overview", tr.dataset.id);
+  };
+  $("hz").onclick = (e) => {
+    const pin = e.target.closest("[data-id]");
+    if (pin) openDrawer("overview", pin.dataset.id);
+  };
+
+  // Ordenação & Filtros
+  document.querySelectorAll("[data-sort]").forEach(b => b.onclick = () => {
+    sortKey = b.dataset.sort;
+    document.querySelectorAll("[data-sort]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    renderAll();
+  });
+
+  const setFilter = m => {
+    currentFilter = m;
+    $("fAll").setAttribute("aria-pressed", m === "all");
+    $("fMine").setAttribute("aria-pressed", m === "mine");
+    $("fPartner").setAttribute("aria-pressed", m === "partner");
+    $("fLow").setAttribute("aria-pressed", m === "low");
+    renderAll();
+  };
+  $("fAll").onclick = () => setFilter("all");
+  $("fMine").onclick = () => setFilter("mine");
+  $("fPartner").onclick = () => setFilter("partner");
+  $("fLow").onclick = () => setFilter("low");
+
+  // Esc fecha gaveta
+  window.addEventListener("keydown", e => {
+    if (e.key === "Escape" && drawerOpen && !$("lightbox").open) closeDrawer();
+  });
+
+  // Global Paste seguro
+  window.addEventListener("paste", e => {
+    const tag = e.target ? e.target.tagName : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    const cd = e.clipboardData; if(!cd) return;
+    for(const it of cd.items){
+      if(it.type && it.type.startsWith("image")){
+        e.preventDefault();
+        processImageFile(it.getAsFile());
+        return;
+      }
+    }
+    const t = cd.getData("text");
+    if(t && (t.includes("The size of") || t.includes("The settlement has"))){
+      const p = parseBillboardText(t);
+      if(p && p.name){
+        e.preventDefault();
+        upsertDeed(p);
+        openDrawer("overview", selectedDeedId);
+      }
+    }
+  });
+
+  // Drag & drop global
+  let depth = 0;
+  window.addEventListener("dragenter", e => { e.preventDefault(); depth++; document.body.classList.add("drag"); });
+  window.addEventListener("dragleave", () => { if(--depth<=0){ depth=0; document.body.classList.remove("drag"); } });
+  window.addEventListener("dragover", e => e.preventDefault());
+  window.addEventListener("drop", e => {
+    e.preventDefault(); depth = 0; document.body.classList.remove("drag");
+    if(e.dataTransfer.files[0]) processImageFile(e.dataTransfer.files[0]);
+  });
+}
+
+function exportData(){
+  const a = document.createElement("a");
+  a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(deeds,null,2));
+  a.download = "wurm_deeds_backup_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast("Backup exportado");
+}
+function exportLocalSeedFile(){
+  const content = "// Snapshot local privado (coloque em meus_dados/minhas_deeds.js)\nwindow.WURM_LOCAL_SEEDS = " + JSON.stringify(deeds, null, 2) + ";\n";
+  const a = document.createElement("a");
+  a.href = "data:text/javascript;charset=utf-8," + encodeURIComponent(content);
+  a.download = "minhas_deeds.js";
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast("Snapshot local minhas_deeds.js exportado");
+}
+function importData(ev){
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const j = JSON.parse(e.target.result);
+      if(!Array.isArray(j)) throw 0;
+      deeds = j; saveDeeds(); renderAll();
+      if(drawerOpen) renderDrawer();
+      showToast("Backup importado");
+    } catch(x){ showToast("Arquivo JSON inválido"); }
+  };
+  r.readAsText(f); ev.target.value = "";
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
