@@ -198,6 +198,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   align-items: center;
   gap: 16px;
   background: var(--bg);
+  position: relative;
+  z-index: 25;
 }
 .hz-label {
   font-size: 11px;
@@ -295,24 +297,27 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   background: var(--bg);
   padding: 0 3px;
 }
+.hz-pin:hover { z-index: 40; }
 .hz-pin .hz-tip {
   position: absolute;
-  bottom: 24px;
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 5px 9px;
   font-size: 11px;
   color: var(--ink);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.12s;
-  z-index: 20;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  z-index: 40;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
 }
+.hz-pin.tip-left .hz-tip { left: 0; transform: none; }
+.hz-pin.tip-right .hz-tip { left: auto; right: 0; transform: none; }
 .hz-pin:hover .hz-tip { opacity: 1; }
 
 /* ---------- Workspace (Grid + Slide-over Drawer) ---------- */
@@ -1045,12 +1050,13 @@ function renderHorizon(list){
     const st = stateOf(x.e.days);
     const p = pos(x.e.days);
     const sel = (drawerOpen && selectedDeedId === x.d.id) ? "selected" : "";
+    const tipAlign = p < 0.14 ? "tip-left" : p > 0.84 ? "tip-right" : "";
     const shortName = x.d.name.length > 18 ? x.d.name.slice(0,17)+"…" : x.d.name;
     const canShow = (idx === 0) || ((idx < 2 || st === "crit") && (p - lastLabelPos >= 0.12));
     if (canShow) lastLabelPos = p;
     const ownerInfo = x.d.mayor ? ` · ${esc(x.d.mayor)}` : "";
     h += `
-      <button class="hz-pin ${st} ${sel}" style="left:${p*100}%" data-id="${esc(x.d.id)}" aria-label="${esc(x.d.name)}">
+      <button class="hz-pin ${st} ${sel} ${tipAlign}" style="left:${p*100}%" data-id="${esc(x.d.id)}" aria-label="${esc(x.d.name)}">
         <i></i>
         ${canShow ? `<em>${esc(shortName)} · ${x.e.days}d</em>` : ''}
         <span class="hz-tip">${esc(x.d.name)} · <span class="mono">${x.e.days}d ${x.e.hours}h</span>${ownerInfo}</span>
