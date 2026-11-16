@@ -1277,6 +1277,10 @@ function renderDrawerOverview(d){
 
       <div class="prop-list">
         <div class="prop-row">
+          <span class="prop-label">${tr("Nome","Name")}</span>
+          <input type="text" class="prop-input" id="propName" value="${esc(d.name||"")}" placeholder="${tr("Nome da deed...","Settlement name...")}">
+        </div>
+        <div class="prop-row">
           <span class="prop-label">${tr("Categoria","Category")}</span>
           <select class="prop-select" id="propTag">
             <option value="Minha" ${(d.tag||"Minha")==="Minha"?"selected":""}>${tr("Minha","Mine")}</option>
@@ -1347,16 +1351,32 @@ function renderDrawerOverview(d){
   `;
 
   // Auto-save inline das propriedades
-  $("propTag").onchange = (ev) => { d.tag = ev.target.value; saveDeeds(); renderAll(); showToast("Categoria atualizada"); };
+  $("propTag").onchange = (ev) => { d.tag = ev.target.value; saveDeeds(); renderAll(); showToast(tr("Categoria atualizada","Category updated")); };
   const saveTextProps = () => {
+    const nm = $("propName").value.trim();
     const m = $("propMayor").value.trim();
     const n = $("propNotes").value.trim();
+    let changed = false;
+    if (nm && nm !== d.name) {
+      d.billboardName = d.billboardName || d.name;
+      d.name = nm;
+      d.customName = true;
+      changed = true;
+    } else if (!nm) {
+      $("propName").value = d.name;
+    }
     if (m !== (d.mayor||"") || n !== (d.notes||"")) {
-      d.mayor = m; d.notes = n; saveDeeds(); renderAll(); showToast("Salvo");
+      d.mayor = m; d.notes = n;
+      changed = true;
+    }
+    if (changed) {
+      saveDeeds(); renderAll(); renderDrawer(); showToast(tr("Salvo","Saved"));
     }
   };
+  $("propName").onblur = saveTextProps;
   $("propMayor").onblur = saveTextProps;
   $("propNotes").onblur = saveTextProps;
+  $("propName").onkeydown = (ev) => { if(ev.key==="Enter") ev.target.blur(); };
   $("propMayor").onkeydown = (ev) => { if(ev.key==="Enter") ev.target.blur(); };
   $("propNotes").onkeydown = (ev) => { if(ev.key==="Enter") ev.target.blur(); };
 
@@ -1842,7 +1862,7 @@ function parseBillboardText(rawText) {
   }
 
   if (!deed.name) return null;
-  deed.id = deed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  deed.id = normDeedName(deed.name).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
   if (lines.length > 1 && !lines[1].toLowerCase().startsWith("the size") && !lines[1].toLowerCase().startsWith("settlement billboard")) {
     deed.motto = lines[1];
@@ -1930,8 +1950,17 @@ function parseBillboardText(rawText) {
 }
 
 /* ---------- Merge Seguro ---------- */
+function normDeedName(s) {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 function upsertDeed(parsedDeed, base64Image = "") {
-  const existingIndex = deeds.findIndex(d => d.id === parsedDeed.id || d.name.toLowerCase() === parsedDeed.name.toLowerCase());
+  const pNorm = normDeedName(parsedDeed.name);
+  const existingIndex = deeds.findIndex(d =>
+    d.id === parsedDeed.id ||
+    normDeedName(d.name) === pNorm ||
+    (d.billboardName && normDeedName(d.billboardName) === pNorm)
+  );
   const pick = (val, fallback) => (val !== null && val !== undefined && val !== "") ? val : fallback;
 
   if (existingIndex >= 0) {
@@ -1944,9 +1973,11 @@ function upsertDeed(parsedDeed, base64Image = "") {
       if (parsedDeed.faith.raritySeconds !== null) mergedFaith.raritySeconds = parsedDeed.faith.raritySeconds;
     }
 
+    const keptName = existing.customName ? existing.name : pick(parsedDeed.name, existing.name);
     deeds[existingIndex] = {
       ...existing,
-      name: pick(parsedDeed.name, existing.name),
+      name: keptName,
+      billboardName: pick(parsedDeed.name, existing.billboardName || existing.name),
       motto: pick(parsedDeed.motto, existing.motto),
       size: pick(parsedDeed.size, existing.size),
       width: pick(parsedDeed.width, existing.width),
